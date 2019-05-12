@@ -22,4 +22,4 @@ initial = QuadLoadState([-1;0;1.5],[0;0;0],[0;0;-1],[0;0;0],eye(3),[0;0;0]);
 final = QuadLoadState([-1;0;1.5],[0;0;0],[0;0;-1],[0;0;0],eye(3),[0;0;0]);
 problem = PathPlanningFormulation(params,path_planning_setting,initial,final);
 problem.solve();
-problem.saveData('results.mat');
+problem.saveData('hover_to_hover_one_obstacle_three_waypoints_load.mat');

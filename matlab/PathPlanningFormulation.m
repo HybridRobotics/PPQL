@@ -267,6 +267,9 @@ classdef PathPlanningFormulation < handle
 		end
 		
 		function saveData(obj,filename)
+			if ~isequal(exist('data','dir'),7)                          
+				mkdir('data')
+			end
 			time = linspace(0,double(obj.vars{1}.traveltime),obj.vars{1}.num_nodes+1);
 			xl = double(obj.vars{1}.xL);
 			vl = double(obj.vars{1}.vL);
