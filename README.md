@@ -8,6 +8,9 @@ This is the package for motion planning and control for a quadrotor with a suspe
 # Usage
 Download this package into the folder you want.
 ## Optimization solver
-- run `matlab_config.m` to add matlab folders and files
-## Python Interface
+### Matlab Solver
+- run `setup-matlab.m` to add matlab folders and files.
+- run offline path planning using different example files. The optimization results will be stored in the folder `/data_offline`
+### Python Interface
+- After the offline optimization results were stored, the python interface help to extract the desired trajectory for further usage.
 
