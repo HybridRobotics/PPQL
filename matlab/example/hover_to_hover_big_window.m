@@ -4,12 +4,18 @@ close all
 params = SystemParameters();
 
 local_setting1 = LocalSetting();
-local_setting1.defineTraveltimeBounded(1,4);
-local_setting1.addWaypoint(Waypoint(25,'load',[0;0;2.5],0.01));
+local_setting1.defineTraveltimeBounded(1,6);
 
 global_setting = GlobalSetting();
-obstacle1 = Polyhedron('lb',[-0.5;-0.5;1],'ub',[0.5;0.5;2]);
+obstacle1 = Polyhedron('lb',[-5; -0.25; -2], 'ub',[5; 0.25; 0.5]);
+obstacle2 = Polyhedron('lb',[-5; -0.25; 1.5], 'ub', [5; 0.25; 4]);
+obstacle3 = Polyhedron('lb',[-5; -0.25; -2], 'ub', [-1; 0.25; 4]);
+obstacle4 = Polyhedron('lb',[1; -0.25; -2], 'ub', [5; 0.25; 4]);
 global_setting.addObstacle(obstacle1);
+global_setting.addObstacle(obstacle2);
+global_setting.addObstacle(obstacle3);
+global_setting.addObstacle(obstacle4);
+
 
 path_planning_setting = PathPlanningSetting();
 path_planning_setting.addLocalSetting(local_setting1);
@@ -19,5 +25,5 @@ initial = QuadLoadState([0;-2.3;1.5],[0;0;0],[0;0;-1],[0;0;0],eye(3),[0;0;0]);
 final = QuadLoadState([0;1.7;1.5],[0;0;0],[0;0;-1],[0;0;0],eye(3),[0;0;0]);
 problem = PathPlanningFormulation(params,path_planning_setting,initial,final);
 problem.solve(path_planning_setting);
-problem.saveData('hover_to_hover_one_obstacle_one_waypoint_load.mat');
+problem.saveData('hover_to_hover_big_window.mat');
 problem.visualize(path_planning_setting);

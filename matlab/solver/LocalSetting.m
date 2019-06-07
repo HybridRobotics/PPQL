@@ -20,7 +20,8 @@ classdef LocalSetting < handle
 		traveltime_min;
 		traveltime_max;
 		traveltime;
-		num_nodes
+		num_nodes;
+		sample_distance_min;
 		
 		% ========== Special Specification ========== %
 		has_closed_space;

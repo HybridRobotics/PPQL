@@ -1,4 +1,4 @@
-classdef SystemParameters
+classdef SystemParameters < handle
 	properties
 		% System parameters
 		mQ = 0.500;

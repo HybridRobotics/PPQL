@@ -8,6 +8,8 @@ classdef PathPlanningFormulation < handle
 		constr;
 		cost;
 		options;
+		
+		output;
 	end
 	
 	methods
@@ -92,7 +94,7 @@ classdef PathPlanningFormulation < handle
 		
 		function addConstraintInitial(obj,pps)
 			% Set variables according to initial condition
-			if strcmp(obj.initial.status,'taut')
+			if obj.initial.status
 				obj.constr = obj.constr + [obj.vars{1}.xL(:,1) == obj.initial.xL;...
 											 obj.vars{1}.vL(:,1) == obj.initial.vL;...
 											 obj.vars{1}.aL(:,1) == [0;0;0];...
@@ -109,7 +111,7 @@ classdef PathPlanningFormulation < handle
 		
 		function addConstraintFinal(obj,pps)
 			% Set variables according to final condition
-			if strcmp(obj.final.status,'taut')
+			if obj.final.status
 				obj.constr = obj.constr + [obj.vars{end}.xL(:,end) == obj.final.xL;...
 											 obj.vars{end}.vL(:,end) == obj.final.vL;...
 											 obj.vars{end}.aL(:,end) == [0;0;0];...
@@ -260,24 +262,77 @@ classdef PathPlanningFormulation < handle
 			obj.options.ipopt.mu_strategy = 'adaptive';
 		end
 		
-		function solve(obj)
+		function solve(obj,pps)
 			fprintf('Optimization begins to be solved with IPOPT Solver\n')
 			optimize(obj.constr,obj.cost,obj.options);
 			fprintf('Optimization ends\n')
+			obj.mergeTrajectory(pps);
+		end
+		
+		function mergeTrajectory(obj,pps)
+			% merge multiple trajectories together
+			t_list = [0];
+			xl_list = double(obj.vars{1}.xL(:,1));
+			vl_list = double(obj.vars{1}.vL(:,1));
+			al_list = double(obj.vars{1}.aL(:,1));
+			dal_list = double(obj.vars{1}.daL(:,1));
+			d2al_list = double(obj.vars{1}.d2aL(:,1));
+			d3al_list = double(obj.vars{1}.d3aL(:,1));
+			d4al_list = double(obj.vars{1}.d4aL(:,1));
+			time_accum = 0;
+			
+			for i = 1:pps.num_local_setting
+				time_segment = linspace(time_accum, double(obj.vars{i}.traveltime), obj.vars{i}.num_nodes+1);
+				t_list = [t_list, time_segment(2:end)];
+				time_accum = time_accum + time_segment;
+				xl_list = [xl_list, double(obj.vars{1}.xL(:,2:obj.vars{i}.num_nodes+1))];
+				vl_list = [vl_list, double(obj.vars{1}.vL(:,2:obj.vars{i}.num_nodes+1))];
+				al_list = [al_list, double(obj.vars{1}.aL(:,2:obj.vars{i}.num_nodes+1))];
+				dal_list = [dal_list, double(obj.vars{1}.daL(:,2:obj.vars{i}.num_nodes+1))];
+				d2al_list = [d2al_list, double(obj.vars{1}.d2aL(:,2:obj.vars{i}.num_nodes+1))];
+				d3al_list = [d3al_list, double(obj.vars{1}.d3aL(:,2:obj.vars{i}.num_nodes+1))];
+				d4al_list = [d4al_list, double(obj.vars{1}.d4aL(:,2:obj.vars{i}.num_nodes+1))];
+			end
+			obj.output.trajectory = Trajectory(t_list,xl_list,vl_list,al_list,dal_list,d2al_list,d3al_list,d4al_list);
+		end
+		
+		function visualize(obj,pps)
+			obj.visualizeTrajectory(pps);
+			hold on;
+			obj.visualizeSettings(pps);
+			hold on;
+		end
+		
+		function visualizeSettings(obj,pps)
+			% display obstacles
+			obj.visualizeObstacles(pps);
+		end
+		
+		function visualizeObstacles(obj,pps)
+			for i = 1:size(pps.global_setting.obstaclelist,2)
+				pps.global_setting.obstaclelist{i}.plot();
+				hold on;
+			end
+		end
+		
+		function visualizeTrajectory(obj,pps)
+			obj.output.trajectory.visualize();
+			hold on;
 		end
 		
 		function saveData(obj,filename)
 			if ~isequal(exist('data','dir'),7)                          
 				mkdir('data')
 			end
-			time = linspace(0,double(obj.vars{1}.traveltime),obj.vars{1}.num_nodes+1);
-			xl = double(obj.vars{1}.xL);
-			vl = double(obj.vars{1}.vL);
-			al = double(obj.vars{1}.aL);
-			dal = double(obj.vars{1}.daL);
-			d2al = double(obj.vars{1}.d2aL);
-			d3al = double(obj.vars{1}.d3aL);
-			d4al = double(obj.vars{1}.d4aL);
+			traj = obj.output.trajectory;
+			time = traj.t_list;
+			xl = traj.xL_list;
+			vl = traj.vL_list;
+			al = traj.aL_list;
+			dal = traj.daL_list;
+			d2al = traj.d2aL_list;
+			d3al = traj.d3aL_list;
+			d4al = traj.d4aL_list;
 			save(strcat('data/', filename),'time','xl','vl','al','dal','d2al','d3al','d4al');
 		end
 	end
