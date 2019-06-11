@@ -4,11 +4,17 @@ close all
 params = SystemParameters();
 
 local_setting1 = LocalSetting();
-local_setting1.defineTraveltimeBounded(1,4);
+local_setting1.defineTraveltimeBounded(1,6);
 local_setting1.num_nodes = 100;
-local_setting1.addWaypoint(Waypoint(26,'load',[-1;2;1.5],0.01));
-local_setting1.addWaypoint(Waypoint(51,'load',[1;2;1.5],0.01));
-local_setting1.addWaypoint(Waypoint(76,'load',[1;0;1.5],0.01));
+local_setting1.addWaypoint(Waypoint(26,'type','quad',...
+	'position',[-1;2;1.5],...
+	'position_error',0.01));
+local_setting1.addWaypoint(Waypoint(51,'type','quad',...
+	'position',[1;2;1.5],...
+	'position_error',0.01));
+local_setting1.addWaypoint(Waypoint(76,'type','quad',...
+	'position',[1;0;1.5],...
+	'position_error',0.01));
 
 global_setting = GlobalSetting();
 

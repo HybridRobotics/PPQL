@@ -1,3 +1,4 @@
+
 classdef LocalSetting < handle
 	properties
 		% ========== Obstacle Avoidance ========== %
@@ -21,7 +22,7 @@ classdef LocalSetting < handle
 		traveltime_max;
 		traveltime;
 		num_nodes;
-		sample_distance_min;
+		sample_distance_max;
 		
 		% ========== Special Specification ========== %
 		has_closed_space;
@@ -45,8 +46,8 @@ classdef LocalSetting < handle
 			% ========== Optimization ========== %
 			obj.Q = diag([1;1;1]);
 			obj.Sf = 1;
-			obj.R = 1;
-			obj.Rbar = 1;
+			obj.R = 10^6;
+			obj.Rbar = 10^8;
 			% ========== Physical Limitations ========== %
 			obj.cable_length_min = 0.15;
 			% ========== Navigation Specification ========== %

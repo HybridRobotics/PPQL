@@ -4,11 +4,17 @@ close all
 params = SystemParameters();
 
 local_setting1 = LocalSetting();
-local_setting1.defineTraveltimeBounded(1,4);
+local_setting1.defineTraveltimeBounded(1,6);
 local_setting1.num_nodes = 100;
-local_setting1.addWaypoint(Waypoint(26,'quad',[-1;2;1.5],0.01));
-local_setting1.addWaypoint(Waypoint(51,'quad',[1;2;1.5],0.01));
-local_setting1.addWaypoint(Waypoint(76,'quad',[1;0;1.5],0.01));
+local_setting1.addWaypoint(Waypoint(26,'type','quad',...
+	'position',[-1;2;1.5],...
+	'position_error',0.01));
+local_setting1.addWaypoint(Waypoint(51,'type','quad',...
+	'position',[1;2;1.5],...
+	'position_error',0.01));
+local_setting1.addWaypoint(Waypoint(76,'type','quad',...
+	'position',[1;0;1.5],...
+	'position_error',0.01));
 
 global_setting = GlobalSetting();
 
@@ -21,4 +27,4 @@ final = QuadLoadState([-1;0;1.5],[0;0;0],[0;0;-1],[0;0;0],eye(3),[0;0;0]);
 problem = PathPlanningFormulation(params,path_planning_setting,initial,final);
 problem.solve(path_planning_setting);
 problem.saveData('hover_to_hover_three_waypoints_quad.mat');
-problem.visualize(path_planning_setting)
+problem.visualize(path_planning_setting);

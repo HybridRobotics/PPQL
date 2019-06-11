@@ -5,6 +5,7 @@ params = SystemParameters();
 
 local_setting1 = LocalSetting();
 local_setting1.defineTraveltimeBounded(1,6);
+% local_setting1.sample_distance_max = 0.25;
 
 global_setting = GlobalSetting();
 obstacle1 = Polyhedron('lb',[-5; -0.25; -2], 'ub',[5; 0.25; 0.5]);
@@ -15,7 +16,6 @@ global_setting.addObstacle(obstacle1);
 global_setting.addObstacle(obstacle2);
 global_setting.addObstacle(obstacle3);
 global_setting.addObstacle(obstacle4);
-
 
 path_planning_setting = PathPlanningSetting();
 path_planning_setting.addLocalSetting(local_setting1);

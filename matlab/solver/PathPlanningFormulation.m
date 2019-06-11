@@ -90,6 +90,7 @@ classdef PathPlanningFormulation < handle
 			obj.addConstraintSlackVariable(pps);
 			obj.addConstraintObstacleAvoidance(pps);
 			obj.addConstraintWaypoints(pps);
+			obj.addConstraintMaximumTravelDistance(pps);
 		end
 		
 		function addConstraintInitial(obj,pps)
@@ -201,7 +202,7 @@ classdef PathPlanningFormulation < handle
 						for k = 1:size(pps.global_setting.obstaclelist,2)
 							A = pps.global_setting.obstaclelist{k}.A;
 							b = pps.global_setting.obstaclelist{k}.b;
-							obj.constr = obj.constr + ...
+							obj.constr = obj.constr+...
 							[-bb'*obj.vars{i}.mu{k}(:,j)+(A*obj.vars{i}.xL(:,j)-b)'*obj.vars{i}.lambda{k}(:,j) >= pps.local_setting_list{i}.dmin;...
 							AA'*obj.vars{i}.mu{k}(:,j)+R'*A'*obj.vars{i}.lambda{k}(:,j) == 0;...
 							obj.vars{i}.lambda{k}(:,j)'*A*A'*obj.vars{i}.lambda{k}(:,j) <= 1];
@@ -216,13 +217,52 @@ classdef PathPlanningFormulation < handle
 				waypoints = pps.local_setting_list{i}.waypoints;
 				num_waypoints = size(waypoints,2);
 				for j = 1:num_waypoints
-					if strcmp(waypoints{j}.type_waypoint,'load')
-						obj.constr = obj.constr + [-waypoints{j}.position_error<= obj.vars{i}.xL(:,waypoints{j}.ind_node) - waypoints{j}.position <= waypoints{j}.position_error];
-					elseif strcmp(waypoints{j}.type_waypoint,'quad')
-						obj.constr = obj.constr + [-waypoints{j}.position_error<= obj.vars{i}.xL(:,waypoints{j}.ind_node) - obj.vars{i}.L(waypoints{j}.ind_node) * obj.vars{i}.q(:, waypoints{j}.ind_node) - waypoints{j}.position <= waypoints{j}.position_error];
-					else
-						msg = 'Error occured during the waypoints navigation constraints';
-						error(msg);
+					% position constraint
+					if ~isempty(waypoints{j}.position)
+						if strcmp(waypoints{j}.type,'load')
+							obj.constr = obj.constr + [-waypoints{j}.position_error<=...
+								obj.vars{i}.xL(:,waypoints{j}.ind_node) - waypoints{j}.position<=...
+								waypoints{j}.position_error];
+						elseif strcmp(waypoints{j}.type,'quad')
+							obj.constr = obj.constr + [-waypoints{j}.position_error<=...
+								obj.vars{i}.xL(:,waypoints{j}.ind_node)-...
+								obj.vars{i}.L(waypoints{j}.ind_node)*obj.vars{i}.q(:, waypoints{j}.ind_node)-...
+								waypoints{j}.position<=...
+								waypoints{j}.position_error];
+						else
+							msg = 'Error occured during the waypoints navigation constraints: inappropriate waypoint type';
+							error(msg);
+						end
+					end
+					
+					% attitude constraint (vec.torial form)
+					if ~isempty(waypoints{j}.attitude)
+						obj.constr = obj.constr + [-waypoints{j}.attitude_error<=...
+							obj.vars{i}.q(:,waypoints{j}.ind_node) - waypoints{j}.attitude<=...
+							waypoints{j}.attitude_error];
+					end
+					
+					% attitude constraint (scalar form)
+					if ~isempty(waypoints{j}.attitude_angle)
+						obj.constr = obj.constr + [cos(waypoints{j}.attitude_angle + waypoints{j}.attitude_angle_error)<=...
+							vec_dot(obj.vars{i}.q(:,waypoints{j}.ind_node), [0;0;-1])<=...
+							cos(waypoints{j}.attitude_angle - waypoints{j}.attitude_angle_error)];
+					end
+					
+					% feasible region constraint
+					if ~isempty(waypoints{j}.feasible_region)
+						obj.constr = obj.constr + [waypoints{j}.feasible_region.A * obj.vars{i}.xL(:,waypoints{j}.ind_node)<=waypoints{j}.feasible_region.b];
+					end
+				end
+			end
+		end
+		
+		function addConstraintMaximumTravelDistance(obj,pps)
+			for i = 1:pps.num_local_setting
+				if ~isempty(pps.local_setting_list{i}.sample_distance_max)
+					max_dis = pps.local_setting_list{i}.sample_distance_max;
+					for j = 2:pps.local_setting_list{i}.num_nodes+1
+						obj.constr = obj.constr + [(obj.vars{i}.xL(:,j) - obj.vars{i}.xL(:,j-1))'*(obj.vars{i}.xL(:,j) - obj.vars{i}.xL(:,j-1))<=max_dis^2];
 					end
 				end
 			end
@@ -245,21 +285,22 @@ classdef PathPlanningFormulation < handle
 					obj.cost = obj.cost+obj.vars{i}.d4aL(:,j)'*pps.local_setting_list{i}.Q*obj.vars{i}.d4aL(:,j)+...
 						pps.local_setting_list{i}.R*obj.vars{i}.F(j)+pps.local_setting_list{i}.Rbar*(obj.params.L-obj.vars{i}.L(j));
 				end
+				for j = 2:obj.vars{i}.num_nodes+1
+					obj.cost = obj.cost + (obj.vars{i}.d4aL(:,j) -obj.vars{i}.d4aL(:,j-1))'*pps.local_setting_list{i}.Q*...
+						(obj.vars{i}.d4aL(:,j)-obj.vars{i}.d4aL(:,j-1));
+				end
+				
 			end
 		end
 		
 		function setupOptions(obj)
 			obj.options = sdpsettings('solver','ipopt','verbose',1);
 			% Termination
-			obj.options.ipopt.tol = 10^(-2);
+			obj.options.ipopt.tol = 10^(-1);
 			obj.options.ipopt.dual_inf_tol = 1;
 			obj.options.ipopt.constr_viol_tol = 10^(-3);
 			obj.options.ipopt.compl_inf_tol = 10^(-3);
 			obj.options.ipopt.max_iter = 1000;
-			% NLP scaling
-			obj.options.ipopt.nlp_scaling_method = 'gradient-based';
-			% Barrier parameters
-			obj.options.ipopt.mu_strategy = 'adaptive';
 		end
 		
 		function solve(obj,pps)
