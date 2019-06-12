@@ -39,19 +39,31 @@ classdef PathPlanningFormulation < handle
 			if pps.has_local_setting
 				for i = 1:pps.num_local_setting
 					ls = pps.local_setting_list{i};
-					obj.vars{i}.xL = sdpvar(3,ls.num_nodes+1);
-					obj.vars{i}.vL = sdpvar(3,ls.num_nodes+1);
-					obj.vars{i}.aL = sdpvar(3,ls.num_nodes+1);
-					obj.vars{i}.daL = sdpvar(3,ls.num_nodes+1);
-					obj.vars{i}.d2aL = sdpvar(3,ls.num_nodes+1);
-					obj.vars{i}.d3aL = sdpvar(3,ls.num_nodes+1);
-					obj.vars{i}.d4aL = sdpvar(3,ls.num_nodes+1);
-					obj.vars{i}.q = sdpvar(3,ls.num_nodes+1);
-					obj.vars{i}.F = sdpvar(1,ls.num_nodes+1);
-					obj.vars{i}.L = sdpvar(1,ls.num_nodes+1);
-					obj.vars{i}.traveltime = ls.traveltime;
-					obj.vars{i}.timestep = ls.traveltime/ls.num_nodes;
-					obj.vars{i}.num_nodes = ls.num_nodes; 
+					if ~strcmp(ls.status,'slack')
+						obj.vars{i}.xL = sdpvar(3,ls.num_nodes+1);
+						obj.vars{i}.vL = sdpvar(3,ls.num_nodes+1);
+						obj.vars{i}.aL = sdpvar(3,ls.num_nodes+1);
+						obj.vars{i}.daL = sdpvar(3,ls.num_nodes+1);
+						obj.vars{i}.d2aL = sdpvar(3,ls.num_nodes+1);
+						obj.vars{i}.d3aL = sdpvar(3,ls.num_nodes+1);
+						obj.vars{i}.d4aL = sdpvar(3,ls.num_nodes+1);
+						obj.vars{i}.q = sdpvar(3,ls.num_nodes+1);
+						obj.vars{i}.F = sdpvar(1,ls.num_nodes+1);
+						obj.vars{i}.L = sdpvar(1,ls.num_nodes+1);
+						obj.vars{i}.traveltime = ls.traveltime;
+						obj.vars{i}.timestep = ls.traveltime/ls.num_nodes;
+						obj.vars{i}.num_nodes = ls.num_nodes;
+					else
+						obj.vars{i}.xL = sdpvar(3,ls.num_nodes+1);
+						obj.vars{i}.vL = sdpvar(3,ls.num_nodes+1);
+						obj.vars{i}.aL = sdpvar(3,ls.num_nodes+1);
+						obj.vars{i}.q = sdpvar(3,ls.num_nodes+1);
+						obj.vars{i}.F = sdpvar(1,ls.num_nodes+1);
+						obj.vars{i}.L = sdpvar(1,ls.num_nodes+1);
+						obj.vars{i}.traveltime = ls.traveltime;
+						obj.vars{i}.timestep = ls.traveltime/ls.num_nodes;
+						obj.vars{i}.num_nodes = ls.num_nodes;
+					end
 				end
 			else
 				msg = 'Error occured during the initialization of variables. The optimization problem should have at least one local setting.';
@@ -83,8 +95,8 @@ classdef PathPlanningFormulation < handle
 		function addConstraint(obj,pps)
 			obj.addConstraintInitial(pps);
 			obj.addConstraintFinal(pps);
-			obj.addConstraintTime(pps);
 			obj.addConstraintCollocation(pps);
+			obj.addConstraintTime(pps);
 			obj.addConstraintComplementary(pps);
 			obj.addConstraintGeometric(pps);
 			obj.addConstraintSlackVariable(pps);
@@ -123,22 +135,56 @@ classdef PathPlanningFormulation < handle
 											 ];
 			else
 				obj.constr = obj.constr + [obj.vars{end}.xL(:,end) == obj.final.xL;...
-											 obj.vars{end}.vL(:,end) == obj.final.vL;...
+											 obj.vars{end}.aL(:,end) == [0;0;-9.8];
 											 ];
 			end
 		end
 		
 		function addConstraintCollocation(obj,pps)
 			for i = 1:pps.num_local_setting
-				for j = 2:obj.vars{i}.num_nodes+1
+				if ~strcmp(pps.local_setting_list{i}.status,'slack')
+					fprintf('not free fall\n');
+					for j = 2:obj.vars{i}.num_nodes+1
+						obj.constr = obj.constr + ...
+							[obj.vars{i}.xL(:,j)-obj.vars{i}.xL(:,j-1) == 0.5*(obj.vars{i}.vL(:,j)+obj.vars{i}.vL(:,j-1))*obj.vars{i}.timestep;...
+							 obj.vars{i}.vL(:,j)-obj.vars{i}.vL(:,j-1) == 0.5*(obj.vars{i}.aL(:,j)+obj.vars{i}.aL(:,j-1))*obj.vars{i}.timestep;...
+							 obj.vars{i}.aL(:,j)-obj.vars{i}.aL(:,j-1) == 0.5*(obj.vars{i}.daL(:,j)+obj.vars{i}.daL(:,j-1))*obj.vars{i}.timestep;...
+							 obj.vars{i}.daL(:,j)-obj.vars{i}.daL(:,j-1) == 0.5*(obj.vars{i}.d2aL(:,j)+obj.vars{i}.d2aL(:,j-1))*obj.vars{i}.timestep;...
+							 obj.vars{i}.d2aL(:,j)-obj.vars{i}.d2aL(:,j-1) == 0.5*(obj.vars{i}.d3aL(:,j)+obj.vars{i}.d3aL(:,j-1))*obj.vars{i}.timestep;...
+							 obj.vars{i}.d3aL(:,j)-obj.vars{i}.d3aL(:,j-1) == 0.5*(obj.vars{i}.d4aL(:,j)+obj.vars{i}.d4aL(:,j-1))*obj.vars{i}.timestep;...		 
+							 ];
+					end
+				else
+					fprintf('free fall\n');
+					% free fall
+					for j = 2:obj.vars{i}.num_nodes+1
+						obj.constr = obj.constr + ...
+						[obj.vars{i}.aL(:,j-1) == [0;0;-9.8];...
+						obj.vars{i}.vL(:,j) == obj.vars{i}.vL(:,j-1) + obj.vars{i}.aL(:,j-1)*obj.vars{i}.timestep;...
+						obj.vars{i}.xL(:,j) == obj.vars{i}.xL(:,j-1) + obj.vars{i}.vL(:,j-1)*obj.vars{i}.timestep + 0.5 * obj.vars{i}.aL(:,j-1) * obj.vars{i}.timestep^2;...
+						];
+% 						obj.constr = obj.constr + ...
+% 							[obj.vars{i}.xL(:,j)-obj.vars{i}.xL(:,j-1) == obj.vars{i}.vL(:,j-1)*obj.vars{i}.timestep + 0.5 * obj.vars{i}.aL(:,j-1) * obj.vars{i}.timestep^2;...
+% 							 obj.vars{i}.vL(:,j)-obj.vars{i}.vL(:,j-1) == obj.vars{i}.aL(:,j-1)*obj.vars{i}.timestep;...
+% 							 ];
+% 						 % high order derivatives are all zero during free fall
+						
+					end
+				end
+			end
+			% continuity of trajectory
+			for i = 2:pps.num_local_setting
+				obj.constr = obj.constr + ...
+					[obj.vars{i}.xL(:,1) == obj.vars{i-1}.xL(:,end);...
+					obj.vars{i}.vL(:,1) == obj.vars{i-1}.vL(:,end);...
+					obj.vars{i}.aL(:,1) == obj.vars{i-1}.aL(:,end)];
+				if ~strcmp(pps.local_setting_list{i}.status,'slack') & ~strcmp(pps.local_setting_list{i}.status,'slack') 
 					obj.constr = obj.constr + ...
-						[obj.vars{i}.xL(:,j)-obj.vars{i}.xL(:,j-1) == 0.5*(obj.vars{i}.vL(:,j)+obj.vars{i}.vL(:,j-1))*obj.vars{i}.timestep;...
-						 obj.vars{i}.vL(:,j)-obj.vars{i}.vL(:,j-1) == 0.5*(obj.vars{i}.aL(:,j)+obj.vars{i}.aL(:,j-1))*obj.vars{i}.timestep;...
-						 obj.vars{i}.aL(:,j)-obj.vars{i}.aL(:,j-1) == 0.5*(obj.vars{i}.daL(:,j)+obj.vars{i}.daL(:,j-1))*obj.vars{i}.timestep;...
-						 obj.vars{i}.daL(:,j)-obj.vars{i}.daL(:,j-1) == 0.5*(obj.vars{i}.d2aL(:,j)+obj.vars{i}.d2aL(:,j-1))*obj.vars{i}.timestep;...
-						 obj.vars{i}.d2aL(:,j)-obj.vars{i}.d2aL(:,j-1) == 0.5*(obj.vars{i}.d3aL(:,j)+obj.vars{i}.d3aL(:,j-1))*obj.vars{i}.timestep;...
-						 obj.vars{i}.d3aL(:,j)-obj.vars{i}.d3aL(:,j-1) == 0.5*(obj.vars{i}.d4aL(:,j)+obj.vars{i}.d4aL(:,j-1))*obj.vars{i}.timestep;...		 
-						 ];
+					[obj.vars{i}.daL(:,1) == obj.vars{i-1}.daL(:,end);...
+					obj.vars{i}.d2aL(:,1) == obj.vars{i-1}.d2aL(:,end);...
+					obj.vars{i}.d3aL(:,1) == obj.vars{i-1}.d3aL(:,end);...
+					obj.vars{i}.d4aL(:,1) == obj.vars{i-1}.d4aL(:,end);
+					];
 				end
 			end
 		end
@@ -281,15 +327,17 @@ classdef PathPlanningFormulation < handle
 		
 		function addCostCollocation(obj,pps)
 			for i = 1:pps.num_local_setting
-				for j = 1:obj.vars{i}.num_nodes+1
-					obj.cost = obj.cost+obj.vars{i}.d4aL(:,j)'*pps.local_setting_list{i}.Q*obj.vars{i}.d4aL(:,j)+...
-						pps.local_setting_list{i}.R*obj.vars{i}.F(j)+pps.local_setting_list{i}.Rbar*(obj.params.L-obj.vars{i}.L(j));
+				if ~strcmp(pps.local_setting_list{i}.status,'slack')
+					for j = 1:obj.vars{i}.num_nodes+1
+						obj.cost = obj.cost+obj.vars{i}.d4aL(:,j)'*pps.local_setting_list{i}.Q*obj.vars{i}.d4aL(:,j)+...
+							pps.local_setting_list{i}.R*obj.vars{i}.F(j)+pps.local_setting_list{i}.Rbar*(obj.params.L-obj.vars{i}.L(j));
+					end
+					% remove?
+					for j = 2:obj.vars{i}.num_nodes+1
+						obj.cost = obj.cost + (obj.vars{i}.d4aL(:,j) -obj.vars{i}.d4aL(:,j-1))'*pps.local_setting_list{i}.Q*...
+							(obj.vars{i}.d4aL(:,j)-obj.vars{i}.d4aL(:,j-1));
+					end
 				end
-				for j = 2:obj.vars{i}.num_nodes+1
-					obj.cost = obj.cost + (obj.vars{i}.d4aL(:,j) -obj.vars{i}.d4aL(:,j-1))'*pps.local_setting_list{i}.Q*...
-						(obj.vars{i}.d4aL(:,j)-obj.vars{i}.d4aL(:,j-1));
-				end
-				
 			end
 		end
 		
@@ -325,7 +373,7 @@ classdef PathPlanningFormulation < handle
 			for i = 1:pps.num_local_setting
 				time_segment = linspace(time_accum, double(obj.vars{i}.traveltime), obj.vars{i}.num_nodes+1);
 				t_list = [t_list, time_segment(2:end)];
-				time_accum = time_accum + time_segment;
+				time_accum = time_accum + double(obj.vars{i}.traveltime);
 				xl_list = [xl_list, double(obj.vars{1}.xL(:,2:obj.vars{i}.num_nodes+1))];
 				vl_list = [vl_list, double(obj.vars{1}.vL(:,2:obj.vars{i}.num_nodes+1))];
 				al_list = [al_list, double(obj.vars{1}.aL(:,2:obj.vars{i}.num_nodes+1))];

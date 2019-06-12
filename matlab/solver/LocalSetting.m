@@ -45,7 +45,7 @@ classdef LocalSetting < handle
 			obj.epsilonz = 0.05;
 			% ========== Optimization ========== %
 			obj.Q = diag([1;1;1]);
-			obj.Sf = 1;
+			obj.Sf = 10^8;
 			obj.R = 10^6;
 			obj.Rbar = 10^8;
 			% ========== Physical Limitations ========== %
@@ -55,6 +55,7 @@ classdef LocalSetting < handle
 			% ========== Special Specification ========== %
 			obj.has_waypoints = false;
 			obj.waypoints = {};
+			obj.status = 'undefined'; % 'taut', 'slack'
 		end
 		
 		function defineTraveltimeFixed(obj,traveltime)
