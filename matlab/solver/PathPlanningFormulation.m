@@ -39,7 +39,7 @@ classdef PathPlanningFormulation < handle
 			if pps.has_local_setting
 				for i = 1:pps.num_local_setting
 					ls = pps.local_setting_list{i};
-					if ~strcmp(ls.status,'slack')
+					if ls.status == 1
 						obj.vars{i}.xL = sdpvar(3,ls.num_nodes+1);
 						obj.vars{i}.vL = sdpvar(3,ls.num_nodes+1);
 						obj.vars{i}.aL = sdpvar(3,ls.num_nodes+1);
@@ -107,7 +107,7 @@ classdef PathPlanningFormulation < handle
 		
 		function addConstraintInitial(obj,pps)
 			% Set variables according to initial condition
-			if obj.initial.status
+			if obj.initial.status == 1
 				obj.constr = obj.constr + [obj.vars{1}.xL(:,1) == obj.initial.xL;...
 											 obj.vars{1}.vL(:,1) == obj.initial.vL;...
 											 obj.vars{1}.aL(:,1) == [0;0;0];...
@@ -124,7 +124,7 @@ classdef PathPlanningFormulation < handle
 		
 		function addConstraintFinal(obj,pps)
 			% Set variables according to final condition
-			if obj.final.status
+			if obj.final.status == 1
 				obj.constr = obj.constr + [obj.vars{end}.xL(:,end) == obj.final.xL;...
 											 obj.vars{end}.vL(:,end) == obj.final.vL;...
 											 obj.vars{end}.aL(:,end) == [0;0;0];...
@@ -142,8 +142,8 @@ classdef PathPlanningFormulation < handle
 		
 		function addConstraintCollocation(obj,pps)
 			for i = 1:pps.num_local_setting
-				if ~strcmp(pps.local_setting_list{i}.status,'slack')
-					fprintf('not free fall\n');
+				if pps.local_setting_list{i}.status == 1
+					fprintf('cable is taut\n');
 					for j = 2:obj.vars{i}.num_nodes+1
 						obj.constr = obj.constr + ...
 							[obj.vars{i}.xL(:,j)-obj.vars{i}.xL(:,j-1) == 0.5*(obj.vars{i}.vL(:,j)+obj.vars{i}.vL(:,j-1))*obj.vars{i}.timestep;...
@@ -155,8 +155,8 @@ classdef PathPlanningFormulation < handle
 							 ];
 					end
 				else
-					fprintf('free fall\n');
-					% free fall
+					fprintf('cable is slack: payload free falling or throwing\n');
+					% free fall or payload throwing
 					for j = 2:obj.vars{i}.num_nodes+1
 						obj.constr = obj.constr + ...
 						[obj.vars{i}.aL(:,j-1) == [0;0;-9.8];...
@@ -178,7 +178,7 @@ classdef PathPlanningFormulation < handle
 					[obj.vars{i}.xL(:,1) == obj.vars{i-1}.xL(:,end);...
 					obj.vars{i}.vL(:,1) == obj.vars{i-1}.vL(:,end);...
 					obj.vars{i}.aL(:,1) == obj.vars{i-1}.aL(:,end)];
-				if ~strcmp(pps.local_setting_list{i}.status,'slack') & ~strcmp(pps.local_setting_list{i}.status,'slack') 
+				if pps.local_setting_list{i}.status == 1 && pps.local_setting_list{i}.status == 1
 					obj.constr = obj.constr + ...
 					[obj.vars{i}.daL(:,1) == obj.vars{i-1}.daL(:,end);...
 					obj.vars{i}.d2aL(:,1) == obj.vars{i-1}.d2aL(:,end);...
@@ -202,7 +202,7 @@ classdef PathPlanningFormulation < handle
 				for j = 1:obj.vars{i}.num_nodes+1
 					obj.constr = obj.constr + [-obj.vars{i}.F(j)*obj.vars{i}.q(:,j) == obj.params.mL*(obj.params.g*[0; 0; 1] + obj.vars{i}.aL(:,j));...
 												 obj.vars{i}.F(j) >= 0;...
-												 obj.vars{i}.F(j)*(obj.params.L - obj.vars{i}.L(j)) == 0];
+												 obj.vars{i}.F(j)*(obj.params.L0 - obj.vars{i}.L(j)) == 0];
 				end
 			end
 		end
@@ -212,7 +212,7 @@ classdef PathPlanningFormulation < handle
 				for j = 1:obj.vars{i}.num_nodes+1
 					obj.constr = obj.constr + [obj.vars{i}.q(:,j)'*obj.vars{i}.q(:,j) == 1;... % S^2 condition
 												 obj.vars{i}.q(:,j).*[0;0;-1] >= 0;... % payload should be under the quadrotor
-												 pps.local_setting_list{i}.cable_length_min <= obj.vars{i}.L(j) <= obj.params.L]; % cable length limitation
+												 pps.local_setting_list{i}.cable_length_min <= obj.vars{i}.L(j) <= obj.params.L0]; % cable length limitation
 				end
 			end
 		end
@@ -327,15 +327,16 @@ classdef PathPlanningFormulation < handle
 		
 		function addCostCollocation(obj,pps)
 			for i = 1:pps.num_local_setting
-				if ~strcmp(pps.local_setting_list{i}.status,'slack')
-					for j = 1:obj.vars{i}.num_nodes+1
+				if pps.local_setting_list{i}.status == 1
+					for j = 2:obj.vars{i}.num_nodes+1
 						obj.cost = obj.cost+obj.vars{i}.d4aL(:,j)'*pps.local_setting_list{i}.Q*obj.vars{i}.d4aL(:,j)+...
-							pps.local_setting_list{i}.R*obj.vars{i}.F(j)+pps.local_setting_list{i}.Rbar*(obj.params.L-obj.vars{i}.L(j));
+							pps.local_setting_list{i}.R*obj.vars{i}.F(j)+pps.local_setting_list{i}.Rbar*(obj.params.L0-obj.vars{i}.L(j));
 					end
 					% remove?
 					for j = 2:obj.vars{i}.num_nodes+1
 						obj.cost = obj.cost + (obj.vars{i}.d4aL(:,j) -obj.vars{i}.d4aL(:,j-1))'*pps.local_setting_list{i}.Q*...
 							(obj.vars{i}.d4aL(:,j)-obj.vars{i}.d4aL(:,j-1));
+						obj.cost = obj.cost + (obj.vars{i}.q(:,j)-obj.vars{i}.q(:,j-1))'*pps.local_setting_list{i}.Q*(obj.vars{i}.q(:,j)-obj.vars{i}.q(:,j-1));
 					end
 				end
 			end
@@ -360,32 +361,61 @@ classdef PathPlanningFormulation < handle
 		
 		function mergeTrajectory(obj,pps)
 			% merge multiple trajectories together
-			t_list = [0];
-			xl_list = double(obj.vars{1}.xL(:,1));
-			vl_list = double(obj.vars{1}.vL(:,1));
-			al_list = double(obj.vars{1}.aL(:,1));
-			dal_list = double(obj.vars{1}.daL(:,1));
-			d2al_list = double(obj.vars{1}.d2aL(:,1));
-			d3al_list = double(obj.vars{1}.d3aL(:,1));
-			d4al_list = double(obj.vars{1}.d4aL(:,1));
-			time_accum = 0;
-			
+			traj = TrajectoryQuadLoadState();
+			init_state = QuadLoadState();
+			init_state.flatnessToStateTaut(double(obj.vars{1}.xL(:,1)),...
+				double(obj.vars{1}.vL(:,1)),...
+				double(obj.vars{1}.aL(:,1)),...
+				double(obj.vars{1}.daL(:,1)),...
+				double(obj.vars{1}.d2aL(:,1)),...
+				double(obj.vars{1}.d3aL(:,1)),...
+				double(obj.vars{1}.d4aL(:,1)),...
+				double(obj.vars{1}.q(:,1)),...
+				double(obj.vars{1}.L(:,1)));
+			traj.addState(init_state);
 			for i = 1:pps.num_local_setting
-				time_segment = linspace(time_accum, double(obj.vars{i}.traveltime), obj.vars{i}.num_nodes+1);
-				t_list = [t_list, time_segment(2:end)];
-				time_accum = time_accum + double(obj.vars{i}.traveltime);
-				xl_list = [xl_list, double(obj.vars{1}.xL(:,2:obj.vars{i}.num_nodes+1))];
-				vl_list = [vl_list, double(obj.vars{1}.vL(:,2:obj.vars{i}.num_nodes+1))];
-				al_list = [al_list, double(obj.vars{1}.aL(:,2:obj.vars{i}.num_nodes+1))];
-				dal_list = [dal_list, double(obj.vars{1}.daL(:,2:obj.vars{i}.num_nodes+1))];
-				d2al_list = [d2al_list, double(obj.vars{1}.d2aL(:,2:obj.vars{i}.num_nodes+1))];
-				d3al_list = [d3al_list, double(obj.vars{1}.d3aL(:,2:obj.vars{i}.num_nodes+1))];
-				d4al_list = [d4al_list, double(obj.vars{1}.d4aL(:,2:obj.vars{i}.num_nodes+1))];
+				if pps.local_setting_list{i}.status == 1
+					for j = 2:obj.vars{i}.num_nodes+1
+						state = QuadLoadState();
+						state.flatnessToStateTaut(double(obj.vars{i}.xL(:,j)),...
+							double(obj.vars{i}.vL(:,j)),...
+							double(obj.vars{i}.aL(:,j)),...
+							double(obj.vars{i}.daL(:,j)),...
+							double(obj.vars{i}.d2aL(:,j)),...
+							double(obj.vars{i}.d3aL(:,j)),...
+							double(obj.vars{i}.d4aL(:,j)),...
+							double(obj.vars{i}.q(:,j)),...
+							double(obj.vars{i}.L(:,j)));
+						traj.addState(state);
+					end
+				elseif pps.local_setting_list{i}.status == 2
+					for j = 2:obj.vars{i}.num_nodes+1
+						state = QuadLoadState();
+						state.flatnessToStateSlack(double(obj.vars{i}.xL(:,j)),...
+							double(obj.vars{i}.vL(:,j)),...
+							double(obj.vars{i}.aL(:,j)),...
+							double(obj.vars{i}.q(:,j)),...
+							double(obj.vars{i}.L(:,j)));
+						traj.addState(state);
+					end
+				else
+					for j = 2:obj.vars{i}.num_nodes+1
+						state = QuadLoadState();
+						state.flatnessToStateSlack(double(obj.vars{i}.xL(:,j)),...
+							double(obj.vars{i}.vL(:,j)),...
+							double(obj.vars{i}.aL(:,j)),...
+							double(obj.vars{i}.q(:,j)),...
+							double(obj.vars{i}.L(:,j)));
+						state.status = 3;
+						traj.addState(state);
+					end
+				end
 			end
-			obj.output.trajectory = Trajectory(t_list,xl_list,vl_list,al_list,dal_list,d2al_list,d3al_list,d4al_list);
+			obj.output.trajectory = traj;
 		end
 		
 		function visualize(obj,pps)
+			figure;
 			obj.visualizeTrajectory(pps);
 			hold on;
 			obj.visualizeSettings(pps);
@@ -414,15 +444,16 @@ classdef PathPlanningFormulation < handle
 				mkdir('data')
 			end
 			traj = obj.output.trajectory;
-			time = traj.t_list;
-			xl = traj.xL_list;
-			vl = traj.vL_list;
-			al = traj.aL_list;
-			dal = traj.daL_list;
-			d2al = traj.d2aL_list;
-			d3al = traj.d3aL_list;
-			d4al = traj.d4aL_list;
-			save(strcat('data/', filename),'time','xl','vl','al','dal','d2al','d3al','d4al');
+			% to do
+% 			time = traj.t_list;
+% 			xl = traj.xL_list;
+% 			vl = traj.vL_list;
+% 			al = traj.aL_list;
+% 			dal = traj.daL_list;
+% 			d2al = traj.d2aL_list;
+% 			d3al = traj.d3aL_list;
+% 			d4al = traj.d4aL_list;
+% 			save(strcat('data/', filename),'time','xl','vl','al','dal','d2al','d3al','d4al');
 		end
 	end
 end

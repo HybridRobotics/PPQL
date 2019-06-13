@@ -1,4 +1,5 @@
 
+
 classdef LocalSetting < handle
 	properties
 		% ========== Obstacle Avoidance ========== %
@@ -33,7 +34,7 @@ classdef LocalSetting < handle
 		guidance_policy;
 		
 		% ========== System Status ========== %
-		status;
+		status; % 1 (taut) 2(slack) 3(release)
 	end
 	
 	methods
@@ -55,7 +56,7 @@ classdef LocalSetting < handle
 			% ========== Special Specification ========== %
 			obj.has_waypoints = false;
 			obj.waypoints = {};
-			obj.status = 'undefined'; % 'taut', 'slack'
+			obj.status = 1; % 'taut', 'slack', 'release'
 		end
 		
 		function defineTraveltimeFixed(obj,traveltime)

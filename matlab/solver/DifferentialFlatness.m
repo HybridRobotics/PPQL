@@ -26,10 +26,10 @@ classdef DifferentialFlatness < SystemParameters
 			omega = vec_cross(p,dp);
 			domega = vec_cross(dp,dp)+vec_cross(p,d2p);
 
-			vxQ = vLd - obj.L*dp;
-			axQ = aLd - obj.L*d2p;
-			daxQ = daLd - obj.L*d3p;
-			d2axQ = d2aLd - obj.L*d4p;
+			vxQ = vLd - obj.L0*dp;
+			axQ = aLd - obj.L0*d2p;
+			daxQ = daLd - obj.L0*d3p;
+			d2axQ = d2aLd - obj.L0*d4p;
 
 			b1d = obj.e1;
 			db1d = zeros(3,1);

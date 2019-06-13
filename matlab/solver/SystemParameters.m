@@ -8,6 +8,6 @@ classdef SystemParameters < handle
 		e1 = [1;0;0];
 		e2 = [0;1;0];
 		e3 = [0;0;1];
-		L = 0.5;
+		L0 = 0.5; % default
 	end
 end
