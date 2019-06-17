@@ -4,14 +4,14 @@ close all
 params = SystemParameters();
 
 local_setting1 = LocalSetting();
-local_setting1.defineTraveltimeBounded(1,6);
+local_setting1.defineTraveltimeBounded(1,4);
 % local_setting1.sample_distance_max = 0.25;
 
 global_setting = GlobalSetting();
-obstacle1 = Polyhedron('lb',[-5; -0.25; -2], 'ub',[5; 0.25; 0.5]);
-obstacle2 = Polyhedron('lb',[-5; -0.25; 1.5], 'ub', [5; 0.25; 4]);
-obstacle3 = Polyhedron('lb',[-5; -0.25; -2], 'ub', [-1; 0.25; 4]);
-obstacle4 = Polyhedron('lb',[1; -0.25; -2], 'ub', [5; 0.25; 4]);
+obstacle1 = Polyhedron('lb',[-5; -0.25; -5], 'ub',[5; 0.25; 1.5]);
+obstacle2 = Polyhedron('lb',[-5; -0.25; 2.5], 'ub', [5; 0.25; 5]);
+obstacle3 = Polyhedron('lb',[-5; -0.25; -5], 'ub', [-1; 0.25; 5]);
+obstacle4 = Polyhedron('lb',[1; -0.25; -5], 'ub', [5; 0.25; 5]);
 global_setting.addObstacle(obstacle1);
 global_setting.addObstacle(obstacle2);
 global_setting.addObstacle(obstacle3);
