@@ -1,20 +1,15 @@
 classdef QuadLoadState < DifferentialFlatness
 	properties
+		status; % 1 (taut) 2(slack) 3(release)
+		time
 		xL;
 		vL;
+		aL;
 		q;
 		L;
 		omega;
 		R;
 		Omega;
-		status; % 1 (taut) 2(slack) 3(release)
-		
-		% flat outputs
-		aL;
-		daL;
-		d2aL;
-		d3aL;
-		d4aL;
 	end
 
 	methods
@@ -52,34 +47,11 @@ classdef QuadLoadState < DifferentialFlatness
 				alph = asin(obj.q(2)/sin(bet))-pi;
 			end
 		end
-		function [] = anglesToAttitude(obj,alph,bet)
-			obj.q = [-sin(bet)*cos(alph);-sin(bet)*sin(alph);-cos(bet)];
+
+		function q = anglesToAttitude(obj,alph,bet)
+			q = [-sin(bet)*cos(alph);-sin(bet)*sin(alph);-cos(bet)];
 		end
-		function flatnessToStateTaut(obj, xL, vL, aL, daL, d2aL, d3aL, d4aL,q,L)
-			g = [0;0;-9.8];
-			err = 0.01;
-			% slack node might appear in the taegment
-			if norm(aL - g) >= err
-				obj.status = 1; % taut
-				[obj.xL,obj.vL,~,obj.q,~,~,obj.R,obj.omega,~,obj.Omega,~,~,~,~,~,~,~,~] = obj.getNomTrajTaut(xL,vL,aL,daL,d2aL,d3aL,d4aL);
-				obj.q = q;
-				obj.L = L;
-			else
-				obj.status = 2; % slack, but might be release
-				obj.flatnessToStateSlack(xL,vL,aL,q,L);
-			end
-		end
-		function flatnessToStateSlack(obj, xL, vL, aL, q, L)
-			obj.xL = xL;
-			obj.vL = vL;
-			obj.aL = aL;
-			obj.q = q;
-			obj.L = L;
-			% other undefined states
-			obj.omega = zeros(3,1);
-			obj.R = eye(3);
-			obj.Omega = zeros(3,1);
-		end
+
 		function visualize(obj)
 			if obj.status == 1
 				obj.visualize_taut();
@@ -89,6 +61,7 @@ classdef QuadLoadState < DifferentialFlatness
 				obj.visualize_release();
 			end
 		end		
+
 		function visualize_taut(obj)
 			s.L = 0.175; %length of quadrotor boom
 			s.R = 0.1; %radius of propeller prop
@@ -144,6 +117,7 @@ classdef QuadLoadState < DifferentialFlatness
 			s.cable = plot3([wp_cable_attach(1) xL(1,1)], [wp_cable_attach(2) xL(2,1)], [wp_cable_attach(3) xL(3,1)], 'k') ;
 			s.cable_attach = plot3([wp(1) wp_cable_attach(1)], [wp(2) wp_cable_attach(2)], [wp(3) wp_cable_attach(3)], 'r') ;
 		end
+
 		function visualize_slack(obj)
 			s.L = 0.175; %length of quadrotor boom
 			s.R = 0.1; %radius of propeller prop
@@ -199,6 +173,7 @@ classdef QuadLoadState < DifferentialFlatness
 			s.cable = plot3([wp_cable_attach(1) xL(1,1)], [wp_cable_attach(2) xL(2,1)], [wp_cable_attach(3) xL(3,1)], 'k-') ;
 			s.cable_attach = plot3([wp(1) wp_cable_attach(1)], [wp(2) wp_cable_attach(2)], [wp(3) wp_cable_attach(3)], 'r') ;
 		end
+
 		function visualize_release(obj)
 			% Extract state x
 			xL = obj.xL;
@@ -206,5 +181,4 @@ classdef QuadLoadState < DifferentialFlatness
 			s.hload = plot3(xL(1), xL(2), xL(3), 'ko', 'LineWidth',lwl) ;
 		end
 	end
-	
 end

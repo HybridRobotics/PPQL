@@ -26,5 +26,6 @@ initial = QuadLoadState([-1;0;1.5],[0;0;0],[0;0;-1],[0;0;0],eye(3),[0;0;0]);
 final = QuadLoadState([-1;0;1.5],[0;0;0],[0;0;-1],[0;0;0],eye(3),[0;0;0]);
 problem = PathPlanningFormulation(params,path_planning_setting,initial,final);
 problem.solve(path_planning_setting);
-problem.saveData('hover_to_hover_three_waypoints_quad.mat');
 problem.visualize(path_planning_setting);
+traj = problem.getTrajectory();
+traj.saveTrajReport('hover_to_hover_three_waypoints_quad.mat');
