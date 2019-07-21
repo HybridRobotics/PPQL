@@ -46,9 +46,9 @@ classdef LocalSetting < handle
 			obj.epsilonz = 0.05;
 			% ========== Optimization ========== %
 			obj.Q = diag([1;1;1]);
-			obj.Sf = 10^8;
-			obj.R = 10^6;
-			obj.Rbar = 10^8;
+			obj.Sf = 1;
+			obj.R = 1;
+			obj.Rbar = 1;
 			% ========== Physical Limitations ========== %
 			obj.cable_length_min = 0.15;
 			% ========== Navigation Specification ========== %

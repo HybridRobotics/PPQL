@@ -3,12 +3,18 @@ classdef PathPlanningFormulation < handle
 		params;
 		initial;
 		final;
-		
+
 		vars;
 		constr;
+
+		cost_time;
+		cost_derivative;
+		cost_tension;
+		cost_cable;
 		cost;
+
 		options;
-		
+
 		output;
 	end
 	
@@ -24,6 +30,10 @@ classdef PathPlanningFormulation < handle
 			% initialization of constraints
 			obj.constr = [];
 			% initilization of cost
+			obj.cost_time = 0;
+			obj.cost_derivative = 0;
+			obj.cost_tension = 0;
+			obj.cost_cable = 0;
 			obj.cost = 0;
 			% initialization of variables
 			obj.initVariables(pps);
@@ -96,6 +106,7 @@ classdef PathPlanningFormulation < handle
 			obj.addConstraintInitial(pps);
 			obj.addConstraintFinal(pps);
 			obj.addConstraintCollocation(pps);
+			obj.addConstraintAcc(pps);
 			obj.addConstraintTime(pps);
 			obj.addConstraintComplementary(pps);
 			obj.addConstraintGeometric(pps);
@@ -111,9 +122,10 @@ classdef PathPlanningFormulation < handle
 				obj.constr = obj.constr + [obj.vars{1}.xL(:,1) == obj.initial.xL;...
 											 obj.vars{1}.vL(:,1) == obj.initial.vL;...
 											 obj.vars{1}.aL(:,1) == [0;0;0];...
-											 obj.vars{1}.daL(1:2,1) == [0;0];...
-											 obj.vars{1}.d2aL(1:2,1) == [0;0];...
-											 obj.vars{1}.d3aL(1:2,1) == [0;0];...
+											 obj.vars{1}.daL(:,1) == [0;0;0];...
+											 obj.vars{1}.d2aL(:,1) == [0;0;0];...
+											 obj.vars{1}.d3aL(:,1) == [0;0;0];...
+											 obj.vars{1}.d4aL(:,1) == [0;0;0];...
 											 ];
 			else
 				obj.constr = obj.constr + [obj.vars{1}.xL(:,1) == obj.initial.xL;...
@@ -176,15 +188,26 @@ classdef PathPlanningFormulation < handle
 			for i = 2:pps.num_local_setting
 				obj.constr = obj.constr + ...
 					[obj.vars{i}.xL(:,1) == obj.vars{i-1}.xL(:,end);...
-					obj.vars{i}.vL(:,1) == obj.vars{i-1}.vL(:,end);...
-					obj.vars{i}.aL(:,1) == obj.vars{i-1}.aL(:,end)];
+					obj.vars{i}.vL(:,1) == obj.vars{i-1}.vL(:,end)];
 				if pps.local_setting_list{i-1}.status == 1 && pps.local_setting_list{i}.status == 1
 					obj.constr = obj.constr + ...
-					[obj.vars{i}.daL(:,1) == obj.vars{i-1}.daL(:,end);...
+					[obj.vars{i}.aL(:,1) == obj.vars{i-1}.aL(:,end);...
+					obj.vars{i}.daL(:,1) == obj.vars{i-1}.daL(:,end);...
 					obj.vars{i}.d2aL(:,1) == obj.vars{i-1}.d2aL(:,end);...
 					obj.vars{i}.d3aL(:,1) == obj.vars{i-1}.d3aL(:,end);...
 					obj.vars{i}.d4aL(:,1) == obj.vars{i-1}.d4aL(:,end);
 					];
+				end
+			end
+		end
+
+		function addConstraintAcc(obj,pps)
+			for i = 1:pps.num_local_setting
+				if pps.local_setting_list{i}.status ~= 1
+					continue;
+				end
+				for j = 2:obj.vars{i}.num_nodes + 1
+					obj.constr = obj.constr + [[-5; -5; -5]<= obj.vars{i}.daL(:,j) <= [5; 5; 5]];
 				end
 			end
 		end
@@ -317,11 +340,12 @@ classdef PathPlanningFormulation < handle
 		function addCost(obj,pps)
 			obj.addCostTime(pps);
 			obj.addCostCollocation(pps);
+			obj.cost = obj.cost + obj.cost_time + obj.cost_derivative + obj.cost_tension + obj.cost_cable;
 		end
 		
 		function addCostTime(obj,pps)
 			for i = 1:pps.num_local_setting
-				obj.cost = obj.cost + pps.local_setting_list{i}.Sf*pps.local_setting_list{i}.traveltime; 
+				obj.cost_time = obj.cost_time + pps.local_setting_list{i}.Sf*pps.local_setting_list{i}.traveltime;
 			end
 		end
 		
@@ -329,14 +353,10 @@ classdef PathPlanningFormulation < handle
 			for i = 1:pps.num_local_setting
 				if pps.local_setting_list{i}.status == 1
 					for j = 2:obj.vars{i}.num_nodes+1
-						obj.cost = obj.cost+obj.vars{i}.d4aL(:,j)'*pps.local_setting_list{i}.Q*obj.vars{i}.d4aL(:,j)+...
-							pps.local_setting_list{i}.R*obj.vars{i}.F(j)+pps.local_setting_list{i}.Rbar*(obj.params.L0-obj.vars{i}.L(j));
-					end
-					% remove?
-					for j = 2:obj.vars{i}.num_nodes+1
-						obj.cost = obj.cost + (obj.vars{i}.d4aL(:,j) -obj.vars{i}.d4aL(:,j-1))'*pps.local_setting_list{i}.Q*...
-							(obj.vars{i}.d4aL(:,j)-obj.vars{i}.d4aL(:,j-1));
-						obj.cost = obj.cost + (obj.vars{i}.q(:,j)-obj.vars{i}.q(:,j-1))'*pps.local_setting_list{i}.Q*(obj.vars{i}.q(:,j)-obj.vars{i}.q(:,j-1));
+						obj.cost_derivative = obj.cost_derivative + (obj.vars{i}.d4aL(:,j)-obj.vars{i}.d4aL(:,j-1))'*...
+							pps.local_setting_list{i}.Q*(obj.vars{i}.d4aL(:,j)-obj.vars{i}.d4aL(:,j-1));
+						obj.cost_tension = obj.cost_tension + pps.local_setting_list{i}.R*obj.vars{i}.F(j);
+						obj.cost_cable = obj.cost_cable + pps.local_setting_list{i}.Rbar*(obj.params.L0-obj.vars{i}.L(j));
 					end
 				end
 			end
