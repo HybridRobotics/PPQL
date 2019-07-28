@@ -21,4 +21,4 @@ problem = PathPlanningFormulation(params,path_planning_setting,initial,final);
 problem.solve(path_planning_setting);
 problem.visualize(path_planning_setting);
 traj = problem.getTrajectory();
-traj.saveTrajReport('hover_to_hover_one_obstacle_one_waypoint_load.mat');
+traj.saveTrajReport('testObstacleWithGuidance.mat');

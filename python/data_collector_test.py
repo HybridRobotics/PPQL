@@ -3,7 +3,7 @@ import numpy as np
 import time
 
 # intialize the trajectory collector, containing all the flat outputs
-data = TrajectoryCollector('../data/hover_to_hover.mat')
+data = TrajectoryCollector('../data/testMoving.mat')
 np.set_printoptions(precision=4)
 # call the flat outputs at a specific timestamp 
 
