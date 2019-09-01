@@ -1,8 +1,8 @@
 classdef PathPlanningFormulation < handle
 	properties
 		params;
-		initial;
-		final;
+		start_state;
+		end_state;
 
 		vars;
 		constr;
@@ -19,14 +19,14 @@ classdef PathPlanningFormulation < handle
 	end
 	
 	methods
-		function obj = PathPlanningFormulation(params,pps,initial,final)
+		function obj = PathPlanningFormulation(params,pps,start_state,end_state)
 			% constructor
 			
 			% system parameters
 			obj.params = params;
 			% boundary conditions
-			obj.initial = initial;
-			obj.final = final;
+			obj.start_state = start_state;
+			obj.end_state = end_state;
 			% initialization of constraints
 			obj.constr = [];
 			% initilization of cost
@@ -103,8 +103,8 @@ classdef PathPlanningFormulation < handle
 		end
 		
 		function addConstraint(obj,pps)
-			obj.addConstraintInitial(pps);
-			obj.addConstraintFinal(pps);
+			obj.addConstraintStartState(pps);
+			obj.addConstraintEndState(pps);
 			obj.addConstraintCollocation(pps);
 			obj.addConstraintAcc(pps);
 			obj.addConstraintTime(pps);
@@ -116,11 +116,11 @@ classdef PathPlanningFormulation < handle
 			obj.addConstraintMaximumTravelDistance(pps);
 		end
 		
-		function addConstraintInitial(obj,pps)
-			% Set variables according to initial condition
-			if obj.initial.status == 1
-				obj.constr = obj.constr + [obj.vars{1}.xL(:,1) == obj.initial.xL;...
-											 obj.vars{1}.vL(:,1) == obj.initial.vL;...
+		function addConstraintStartState(obj,pps)
+			% Set variables according to start_state
+			if obj.start_state.status == 1
+				obj.constr = obj.constr + [obj.vars{1}.xL(:,1) == obj.start_state.xL;...
+											 obj.vars{1}.vL(:,1) == obj.start_state.vL;...
 											 obj.vars{1}.aL(:,1) == [0;0;0];...
 											 obj.vars{1}.daL(:,1) == [0;0;0];...
 											 obj.vars{1}.d2aL(:,1) == [0;0;0];...
@@ -128,17 +128,17 @@ classdef PathPlanningFormulation < handle
 											 obj.vars{1}.d4aL(:,1) == [0;0;0];...
 											 ];
 			else
-				obj.constr = obj.constr + [obj.vars{1}.xL(:,1) == obj.initial.xL;...
-											 obj.vars{1}.vL(:,1) == obj.initial.vL;...
+				obj.constr = obj.constr + [obj.vars{1}.xL(:,1) == obj.start_state.xL;...
+											 obj.vars{1}.vL(:,1) == obj.start_state.vL;...
 											 ];
 			end
 		end
 		
-		function addConstraintFinal(obj,pps)
-			% Set variables according to final condition
-			if obj.final.status == 1
-				obj.constr = obj.constr + [obj.vars{end}.xL(:,end) == obj.final.xL;...
-											 obj.vars{end}.vL(:,end) == obj.final.vL;...
+		function addConstraintEndState(obj,pps)
+			% Set variables according to end_state
+			if obj.end_state.status == 1
+				obj.constr = obj.constr + [obj.vars{end}.xL(:,end) == obj.end_state.xL;...
+											 obj.vars{end}.vL(:,end) == obj.end_state.vL;...
 											 obj.vars{end}.aL(:,end) == [0;0;0];...
 											 obj.vars{end}.daL(:,end) == [0;0;0];...
 											 obj.vars{end}.d2aL(:,end) == [0;0;0];...
@@ -146,7 +146,7 @@ classdef PathPlanningFormulation < handle
 											 obj.vars{end}.d4aL(:,end) == [0;0;0];...
 											 ];
 			else
-				obj.constr = obj.constr + [obj.vars{end}.xL(:,end) == obj.final.xL;...
+				obj.constr = obj.constr + [obj.vars{end}.xL(:,end) == obj.end_state.xL;...
 											 obj.vars{end}.aL(:,end) == [0;0;-9.8];
 											 ];
 			end
@@ -184,7 +184,10 @@ classdef PathPlanningFormulation < handle
 			for i = 2:pps.num_local_setting
 				obj.constr = obj.constr + ...
 					[obj.vars{i}.xL(:,1) == obj.vars{i-1}.xL(:,end);...
-					obj.vars{i}.vL(:,1) == obj.vars{i-1}.vL(:,end)];
+					obj.vars{i}.vL(:,1) == obj.vars{i-1}.vL(:,end);...
+					obj.vars{i}.q(:,1) == obj.vars{i-1}.q(:,end);...
+					obj.vars{i}.L(1) == obj.vars{i-1}.L(end);...
+					];
 				if pps.local_setting_list{i-1}.status == 1 && pps.local_setting_list{i}.status == 1
 					obj.constr = obj.constr + ...
 					[obj.vars{i}.aL(:,1) == obj.vars{i-1}.aL(:,end);...
@@ -203,7 +206,7 @@ classdef PathPlanningFormulation < handle
 					continue;
 				end
 				for j = 2:obj.vars{i}.num_nodes + 1
-					obj.constr = obj.constr + [[-5; -5; -5]<= obj.vars{i}.daL(:,j) <= [5; 5; 5]];
+					obj.constr = obj.constr + [[-20; -20; -20]<= obj.vars{i}.daL(:,j) <= [20; 20; 20]];
 				end
 			end
 		end
@@ -260,7 +263,7 @@ classdef PathPlanningFormulation < handle
 						R = eye(3) + 2*hat(qq)*hat(qq);
 						bb = [pps.local_setting_list{i}.epsilonx;...
 							  pps.local_setting_list{i}.epsilony;...
-							  pps.local_setting_list{i}.epsilonz;...
+							  0;... % assume payload is point-mass
 							  pps.local_setting_list{i}.epsilonx;...
 							  pps.local_setting_list{i}.epsilony;...
 							  pps.local_setting_list{i}.epsilonz + obj.vars{i}.L(j)];
@@ -326,8 +329,11 @@ classdef PathPlanningFormulation < handle
 			for i = 1:pps.num_local_setting
 				if ~isempty(pps.local_setting_list{i}.sample_distance_max)
 					max_dis = pps.local_setting_list{i}.sample_distance_max;
+					if i ~= 1
+						obj.constr = obj.constr + [(obj.vars{i}.xL(:,1) - obj.vars{i}.xL(:,end))'*(obj.vars{i}.xL(:,1) - obj.vars{i}.xL(:,end)) <= max_dis^2];
+					end
 					for j = 2:pps.local_setting_list{i}.num_nodes+1
-						obj.constr = obj.constr + [(obj.vars{i}.xL(:,j) - obj.vars{i}.xL(:,j-1))'*(obj.vars{i}.xL(:,j) - obj.vars{i}.xL(:,j-1))<=max_dis^2];
+						obj.constr = obj.constr + [(obj.vars{i}.xL(:,j) - obj.vars{i}.xL(:,j-1))'*(obj.vars{i}.xL(:,j) - obj.vars{i}.xL(:,j-1)) <= max_dis^2];
 					end
 				end
 			end
@@ -361,11 +367,11 @@ classdef PathPlanningFormulation < handle
 		function setupOptions(obj)
 			obj.options = sdpsettings('solver','ipopt','verbose',1);
 			% Termination
-			obj.options.ipopt.tol = 10^(-1);
+			obj.options.ipopt.tol = 1;
 			obj.options.ipopt.dual_inf_tol = 1;
-			obj.options.ipopt.constr_viol_tol = 10^(-3);
-			obj.options.ipopt.compl_inf_tol = 10^(-3);
-			obj.options.ipopt.max_iter = 1000;
+			obj.options.ipopt.constr_viol_tol = 10^(-2);
+			obj.options.ipopt.compl_inf_tol = 10^(-2);
+			obj.options.ipopt.max_iter = 3000;
 		end
 		
 		function solve(obj,pps)
@@ -378,7 +384,7 @@ classdef PathPlanningFormulation < handle
 		function mergeTrajectory(obj,pps)
 			% merge multiple trajectories together
 			traj = TrajectoryQuadLoadState();
-			time = 0; % TODO: should be extracted from initial state
+			time = 0; % TODO: should be extracted from start_state state
 			init_state = QuadLoadDifferentialState();
 			init_state.flatOutputsToStateTaut(time,...
 				double(obj.vars{1}.xL(:,1)),...
@@ -422,7 +428,7 @@ classdef PathPlanningFormulation < handle
 					end
 				else
 					for j = 2:obj.vars{i}.num_nodes+1
-						state = QuadLoadState();
+						state = QuadLoadDifferentialState();
 						time = time + double(obj.vars{i}.timestep);
 						state.flatOutputsToStateRelease(time,...
 							double(obj.vars{i}.xL(:,j)),...

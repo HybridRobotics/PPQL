@@ -7,7 +7,7 @@ data = TrajectoryCollector('../data/testMoving.mat')
 np.set_printoptions(precision=4)
 # call the flat outputs at a specific timestamp 
 
-# TEST 1: not start yet, use the initial state
+# TEST 1: not start yet, use the start_state
 time_start = time.clock()
 timestamp = -1
 flat_outputs = data.interpolation_linear(timestamp)
@@ -45,7 +45,7 @@ print('load 4th derivative of acceleration',flat_outputs['d4aL'])
 time_elapsed = (time.clock() - time_start)
 print('computational time for getting values', time_elapsed)
 
-# TEST 3: not start yet, use the final state
+# TEST 3: not start yet, use the end_state
 time_start = time.clock()
 timestamp = 10
 flat_outputs = data.interpolation_linear(timestamp)

@@ -40,10 +40,10 @@ classdef LocalSetting < handle
 	methods
 		function obj = LocalSetting()
 			% ========== Obstacle Avoidance ========== %
-			obj.dmin = 0.05;
+			obj.dmin = 0.02;
 			obj.epsilonx = 0.16;
 			obj.epsilony = 0.16;
-			obj.epsilonz = 0.05;
+			obj.epsilonz = 0.10;
 			% ========== Optimization ========== %
 			obj.Q = diag([1;1;1]);
 			obj.Sf = 1;
