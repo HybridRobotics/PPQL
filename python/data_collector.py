@@ -14,6 +14,8 @@ class TrajectoryCollector:
 		self.d2aL_list = data['d2aL_list']
 		self.d3aL_list = data['d3aL_list']
 		self.d4aL_list = data['d4aL_list']
+		self.q_list = data['q_list']
+		self.L_list = data['L_list']
 
 	# get the size of trajectory
 	def get_trajectory_size(self):
@@ -54,6 +56,8 @@ class TrajectoryCollector:
 			d2aL = self.d2aL_list[:, 0]
 			d3aL = self.d3aL_list[:, 0]
 			d4aL = self.d4aL_list[:, 0]
+			q = self.q_list[:, 0]
+			L = self.L_list[0, 0]
 		elif ind == self.get_trajectory_size() - 1:
 			# use last pose of the trajectory
 			time = self.time_list[0, ind]
@@ -66,12 +70,13 @@ class TrajectoryCollector:
 			d2aL = self.d2aL_list[:, ind]
 			d3aL = self.d3aL_list[:, ind]
 			d4aL = self.d4aL_list[:, ind]
-			return {'time': time, 'status': status, 'xQ': xQ, 'xL': xL, 'vL': vL, 'aL': aL, 'daL': daL, 'd2aL': d2aL, 'd3aL': d3aL, 'd4aL': d4aL}
+			q = self.q_list[:, ind]
+			L = self.L_list[0, ind]
 		else:
 			gamma = (time-self.time_list[0, ind])/(self.time_list[0, ind+1] - self.time_list[0, ind])
 			# linear interpolation between poses
 			time = self.time_list[0, ind]*gamma+self.time_list[0, ind+1]*(1-gamma) 
-			status = self.status_list[0, ind]*gamma+self.status_list[0, ind+1]*(1-gamma)
+			status = self.status_list[0, ind]
 			xQ = self.xQ_list[:, ind]*gamma+self.xQ_list[:, ind+1]*(1-gamma)
 			xL = self.xL_list[:, ind]*gamma+self.xL_list[:, ind+1]*(1-gamma)
 			vL = self.vL_list[:, ind]*gamma+self.vL_list[:, ind+1]*(1-gamma)
@@ -80,8 +85,10 @@ class TrajectoryCollector:
 			d2aL = self.d2aL_list[:, ind]*gamma+self.d2aL_list[:, ind+1]*(1-gamma)
 			d3aL = self.d3aL_list[:, ind]*gamma+self.d3aL_list[:, ind+1]*(1-gamma)
 			d4aL = self.d4aL_list[:, ind]*gamma+self.d4aL_list[:, ind+1]*(1-gamma)
+			q = self.q_list[:, ind]*gamma+self.q_list[:, ind+1]*(1-gamma)
+			L = self.L_list[0, ind]
 		
-		return {'time': time, 'status': status, 'xQ': xQ, 'xL': xL, 'vL': vL, 'aL': aL, 'daL': daL, 'd2aL': d2aL, 'd3aL': d3aL, 'd4aL': d4aL}
+		return {'time': time, 'status': status, 'xQ': xQ, 'xL': xL, 'vL': vL, 'aL': aL, 'daL': daL, 'd2aL': d2aL, 'd3aL': d3aL, 'd4aL': d4aL, 'q': q, 'L': L}
 
 	def interpolation_quadratic(self, time):
 		pass

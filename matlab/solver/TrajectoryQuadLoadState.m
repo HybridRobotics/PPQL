@@ -23,11 +23,11 @@ classdef TrajectoryQuadLoadState < handle
 			if ~isequal(exist('data','dir'),7)
 				mkdir('data')
 			end
-			[time_list, status_list, xQ_list, xL_list, vL_list aL_list, daL_list, d2aL_list, d3aL_list, d4aL_list] = obj.getTrajReport();
-			save(strcat('data/', filename),'time_list', 'status_list', 'xQ_list', 'xL_list','vL_list','aL_list','daL_list','d2aL_list','d3aL_list','d4aL_list');
+			[time_list, status_list, xQ_list, xL_list, vL_list aL_list, daL_list, d2aL_list, d3aL_list, d4aL_list, q_list, L_list] = obj.getTrajReport();
+			save(strcat('data/', filename),'time_list', 'status_list', 'xQ_list', 'xL_list','vL_list','aL_list','daL_list','d2aL_list','d3aL_list','d4aL_list','q_list','L_list');
 		end
 
-		function [time_list, status_list, xQ_list, xL_list, vL_list, aL_list, daL_list, d2aL_list, d3aL_list, d4aL_list] = getTrajReport(obj)
+		function [time_list, status_list, xQ_list, xL_list, vL_list, aL_list, daL_list, d2aL_list, d3aL_list, d4aL_list, q_list, L_list] = getTrajReport(obj)
 			% get the report (flat outputs and states) from the trajectory
 			time_list = obj.getTimeList();
 			status_list = obj.getStatusList();
@@ -39,6 +39,8 @@ classdef TrajectoryQuadLoadState < handle
 			d2aL_list = obj.getaLList();
 			d3aL_list = obj.getaLList();
 			d4aL_list = obj.getaLList();
+			q_list = obj.getqList();
+			L_list = obj.getLList();
 		end
 
 		function time_list = getTimeList(obj)
@@ -109,10 +111,24 @@ classdef TrajectoryQuadLoadState < handle
 			end
 		end
 
-		function d3aL_list = getd4aLList(obj)
+		function d4aL_list = getd4aLList(obj)
 			d4aL_list = [];
 			for i = 1:obj.size()
 				d4aL_list = [d4aL_list, obj.traj(i).d4aL];
+			end
+		end
+
+		function q_list = getqList(obj)
+			q_list = [];
+			for i = 1:obj.size()
+				q_list = [q_list, obj.traj(i).q];
+			end
+		end
+
+		function L_list = getLList(obj)
+			L_list = [];
+			for i = 1:obj.size()
+				L_list = [L_list, obj.traj(i).L];
 			end
 		end
 	end
