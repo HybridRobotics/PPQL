@@ -37,7 +37,7 @@ classdef QuadLoadDifferentialState < QuadLoadState
 			obj.d2aL = d2aL;
 			obj.d3aL = d3aL;
 			obj.d4aL = d4aL;
-			obj.xQ = NaN(3,1);
+			obj.xQ = xL - L*q;
 		end
 
 		function flatOutputsToStateSlack(obj, t, xL, vL, aL, q, L)
@@ -57,7 +57,7 @@ classdef QuadLoadDifferentialState < QuadLoadState
 			obj.d2aL = NaN(3,1);
 			obj.d3aL = NaN(3,1);
 			obj.d4aL = NaN(3,1);
-			obj.xQ = xL - q*L;
+			obj.xQ = xL - L*q;
 		end
 
 		function flatOutputsToStateRelease(obj, t, xL, vL, aL, q, L)

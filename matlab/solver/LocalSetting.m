@@ -56,7 +56,7 @@ classdef LocalSetting < handle
 			% ========== Special Specification ========== %
 			obj.has_waypoints = false;
 			obj.waypoints = {};
-			obj.status = 1; % 'taut', 'slack', 'release'
+			obj.status = 1; % default taut case
 		end
 		
 		function defineTraveltimeFixed(obj,traveltime)
