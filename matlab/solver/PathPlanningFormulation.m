@@ -258,6 +258,8 @@ classdef PathPlanningFormulation < handle
 					for j = 1:obj.vars{i}.num_nodes+1
 						% Rodrigues' formula
 						qq = (1/2)*([0;0;-1]+obj.vars{i}.q(:,j));
+                        % normalization of rotation axis
+                        qq = qq/norm(qq);
 						% R = eye(3) + sin(pi)*hat(qq) +...
 						% 	(1-cos(pi))*hat(qq)*hat(qq);
 						R = eye(3) + 2*hat(qq)*hat(qq);
