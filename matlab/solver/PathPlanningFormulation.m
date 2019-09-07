@@ -107,6 +107,7 @@ classdef PathPlanningFormulation < handle
 			obj.addConstraintEndState(pps);
 			obj.addConstraintCollocation(pps);
 			obj.addConstraintAcc(pps);
+			obj.addConstraintJerk(pps);
 			obj.addConstraintTime(pps);
 			obj.addConstraintComplementary(pps);
 			obj.addConstraintGeometric(pps);
@@ -114,6 +115,7 @@ classdef PathPlanningFormulation < handle
 			obj.addConstraintObstacleAvoidance(pps);
 			obj.addConstraintWaypoints(pps);
 			obj.addConstraintMaximumTravelDistance(pps);
+			obj.addConstraintClosedSpace(pps);
 		end
 		
 		function addConstraintStartState(obj,pps)
@@ -205,9 +207,39 @@ classdef PathPlanningFormulation < handle
 				if pps.local_setting_list{i}.status ~= 1
 					continue;
 				end
-				for j = 2:obj.vars{i}.num_nodes + 1
-					obj.constr = obj.constr + [[-20; -20; -20]<= obj.vars{i}.daL(:,j) <= [20; 20; 20]];
+				if ~isempty(pps.local_setting_list{i}.acc_min)
+					for j = 2:obj.vars{i}.num_nodes + 1
+						obj.constr = obj.constr + [pps.local_setting_list{i}.acc_min <= obj.vars{i}.aL(:,j)];
+					end
 				end
+
+				if ~isempty(pps.local_setting_list{i}.acc_max)
+					for j = 2:obj.vars{i}.num_nodes + 1
+						obj.constr = obj.constr + [obj.vars{i}.aL(:,j) <= pps.local_setting_list{i}.acc_max];
+					end
+				end
+			end
+		end
+		
+		function addConstraintJerk(obj,pps)
+			for i = 1:pps.num_local_setting
+				if pps.local_setting_list{i}.status ~= 1
+					continue;
+				end
+				if ~isempty(pps.local_setting_list{i}.jerk_min)
+					for j = 2:obj.vars{i}.num_nodes + 1
+						obj.constr = obj.constr + [pps.local_setting_list{i}.jerk_min <= obj.vars{i}.daL(:,j)];
+					end
+				end
+
+				if ~isempty(pps.local_setting_list{i}.jerk_max)
+					for j = 2:obj.vars{i}.num_nodes + 1
+						obj.constr = obj.constr + [obj.vars{i}.daL(:,j) <= pps.local_setting_list{i}.jerk_max];
+					end
+				end
+				% for j = 2:obj.vars{i}.num_nodes + 1
+				% 	obj.constr = obj.constr + [-[20;20;20] <= obj.vars{i}.daL(:,j) <= [20;20;20]];
+				% end
 			end
 		end
 		
@@ -256,13 +288,18 @@ classdef PathPlanningFormulation < handle
 				AA = [-eye(3);eye(3)]; % time-variant
 				for i = 1:pps.num_local_setting
 					for j = 1:obj.vars{i}.num_nodes+1
-						% Rodrigues' formula
-						qq = (1/2)*([0;0;-1]+obj.vars{i}.q(:,j));
+						% Rodrigues' Formula
+						% qq = (1/2)*([0;0;-1]+obj.vars{i}.q(:,j));
                         % normalization of rotation axis
-                        qq = qq/norm(qq);
+                        % qq = qq/sqrt((-obj.vars{i}.q(3,j)+1)/2);
 						% R = eye(3) + sin(pi)*hat(qq) +...
 						% 	(1-cos(pi))*hat(qq)*hat(qq);
-						R = eye(3) + 2*hat(qq)*hat(qq);
+						% R = eye(3) + 2*hat(qq)*hat(qq);
+						
+						% direct calculation
+						q = obj.vars{i}.q(:,j);
+						qq = q + [0;0;-1];
+						R = eye(3) + hat(qq)*hat(qq)/(2*(1-cos(q(3))));
 						bb = [pps.local_setting_list{i}.epsilonx;...
 							  pps.local_setting_list{i}.epsilony;...
 							  0;... % assume payload is point-mass
@@ -336,6 +373,19 @@ classdef PathPlanningFormulation < handle
 					end
 					for j = 2:pps.local_setting_list{i}.num_nodes+1
 						obj.constr = obj.constr + [(obj.vars{i}.xL(:,j) - obj.vars{i}.xL(:,j-1))'*(obj.vars{i}.xL(:,j) - obj.vars{i}.xL(:,j-1)) <= max_dis^2];
+					end
+				end
+			end
+		end
+
+		function addConstraintClosedSpace(obj,pps)
+			for i = 1:pps.num_local_setting
+				if ~isempty(pps.local_setting_list{i}.closed_space)
+					num_closed_space = size(pps.local_setting_list{i}.closed_space, 2);
+					for j = 1: num_closed_space
+						for k = 2: obj.vars{i}.num_nodes+1
+							obj.constr = obj.constr + [pps.local_setting_list{i}.closed_space{j}.A * obj.vars{i}.xL(:,k) <= pps.local_setting_list{i}.closed_space{j}.b];
+						end
 					end
 				end
 			end

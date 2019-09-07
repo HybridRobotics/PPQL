@@ -16,6 +16,10 @@ classdef LocalSetting < handle
 		
 		% ========== Physical Limitations ========== %
 		cable_length_min; % minimal revolute length
+		acc_min;
+		acc_max;
+		jerk_min;
+		jerk_max;
 		
 		% ========== Navigation Specification ========== %
 		is_fixed_traveltime;
@@ -26,10 +30,11 @@ classdef LocalSetting < handle
 		sample_distance_max;
 		
 		% ========== Special Specification ========== %
-		has_closed_space;
 		closed_space;
+
 		has_waypoints;
 		waypoints;
+		
 		has_guidance_policy;
 		guidance_policy;
 		
@@ -51,9 +56,12 @@ classdef LocalSetting < handle
 			obj.Rbar = 1;
 			% ========== Physical Limitations ========== %
 			obj.cable_length_min = 0.15;
+			obj.jerk_min = 20*[-1;-1;-1]; % default
+			obj.jerk_max = 20*[1;1;1]; % default
 			% ========== Navigation Specification ========== %
 			obj.num_nodes = 50;
 			% ========== Special Specification ========== %
+			obj.closed_space = {};
 			obj.has_waypoints = false;
 			obj.waypoints = {};
 			obj.status = 1; % default taut case
@@ -79,6 +87,11 @@ classdef LocalSetting < handle
 				msg = 'Error occured during the waypoint specification. The specified node of waypoint should be less or equal to the number of nodes in each segment';
 				error(msg);
 			end
+		end
+
+		function addClosedSpace(obj,closed_space)
+			num_closed_space = size(obj.closed_space, 2);
+			obj.closed_space{num_closed_space + 1} = closed_space;
 		end
 	end
 end
