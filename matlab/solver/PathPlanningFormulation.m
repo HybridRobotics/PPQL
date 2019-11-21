@@ -107,7 +107,7 @@ classdef PathPlanningFormulation < handle
 			obj.addConstraintEndState(pps);
 			obj.addConstraintCollocation(pps);
 			obj.addConstraintAcc(pps);
-			obj.addConstraintJerk(pps);
+			% obj.addConstraintJerk(pps);
 			obj.addConstraintTime(pps);
 			obj.addConstraintComplementary(pps);
 			obj.addConstraintGeometric(pps);
@@ -299,7 +299,9 @@ classdef PathPlanningFormulation < handle
 						% direct calculation
 						q = obj.vars{i}.q(:,j);
 						qq = q + [0;0;-1];
-						R = eye(3) + hat(qq)*hat(qq)/(2*(1-cos(q(3))));
+                        qq_norm = sdpvar(1,1);
+                        obj.constr = obj.constr + [qq_norm^2 == q(1)^2 + q(2)^2 + (q(3)-1)^2];
+                        R = eye(3) + hat_map(qq)*sin(qq_norm*pi)/qq_norm + hat_map(qq)*hat_map(qq)*(1-cos(qq_norm*pi))/(qq_norm^2);
 						bb = [pps.local_setting_list{i}.epsilonx;...
 							  pps.local_setting_list{i}.epsilony;...
 							  0;... % assume payload is point-mass
