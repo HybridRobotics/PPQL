@@ -10,20 +10,44 @@ classdef TrajectoryQuadLoadState < handle
 		function num = size(obj)
 			num = size(obj.traj,2);
 		end
-		
+
+		function load_traj = generateLoadTraj(obj)
+			load_traj = [];
+			for i = 1:obj.size()
+				load_traj = [load_traj,obj.traj(i).xL];
+			end
+		end
+
+		function time_traj = generateTimeTraj(obj)
+			time_traj = [];
+			for i = 1:obj.size()
+				time_traj = [time_traj,obj.traj(i).time];
+			end
+		end
+
+		function length_traj = generateLengthTraj(obj)
+			length_traj = [];
+			for i = 1:obj.size()
+				length_traj = [length_traj,obj.traj(i).L];
+			end
+		end
+
 		function [] = visualize(obj)
 			for i = 1:obj.size()
 				state = obj.traj(i);
 				state.visualize();
 				hold on;
 			end
+			load_traj = obj.generateLoadTraj();
+			plot3(load_traj(1,:),load_traj(2,:),load_traj(3,:),'k');
+			hold on;
 		end
 
 		function [] = saveTrajReport(obj, filename)
 			if ~isequal(exist('data','dir'),7)
 				mkdir('data')
 			end
-			[time_list, status_list, xQ_list, xL_list, vL_list aL_list, daL_list, d2aL_list, d3aL_list, d4aL_list, q_list, L_list] = obj.getTrajReport();
+			[time_list, status_list, xQ_list, xL_list, vL_list, aL_list, daL_list, d2aL_list, d3aL_list, d4aL_list, q_list, L_list] = obj.getTrajReport();
 			save(strcat('data/', filename),'time_list', 'status_list', 'xQ_list', 'xL_list','vL_list','aL_list','daL_list','d2aL_list','d3aL_list','d4aL_list','q_list','L_list');
 		end
 

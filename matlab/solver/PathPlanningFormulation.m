@@ -92,7 +92,6 @@ classdef PathPlanningFormulation < handle
 					end
 				end
 			end
-				
 		end
 		
 		function setupOptimization(obj,pps)
@@ -155,18 +154,32 @@ classdef PathPlanningFormulation < handle
 		end
 		
 		function addConstraintCollocation(obj,pps)
+			collocation_constraint_type = 1;
 			for i = 1:pps.num_local_setting
 				if pps.local_setting_list{i}.status == 1
 					fprintf('cable is taut\n');
 					for j = 2:obj.vars{i}.num_nodes+1
-						obj.constr = obj.constr + ...
-							[obj.vars{i}.xL(:,j)-obj.vars{i}.xL(:,j-1) == 0.5*(obj.vars{i}.vL(:,j)+obj.vars{i}.vL(:,j-1))*obj.vars{i}.timestep;...
-							 obj.vars{i}.vL(:,j)-obj.vars{i}.vL(:,j-1) == 0.5*(obj.vars{i}.aL(:,j)+obj.vars{i}.aL(:,j-1))*obj.vars{i}.timestep;...
-							 obj.vars{i}.aL(:,j)-obj.vars{i}.aL(:,j-1) == 0.5*(obj.vars{i}.daL(:,j)+obj.vars{i}.daL(:,j-1))*obj.vars{i}.timestep;...
-							 obj.vars{i}.daL(:,j)-obj.vars{i}.daL(:,j-1) == 0.5*(obj.vars{i}.d2aL(:,j)+obj.vars{i}.d2aL(:,j-1))*obj.vars{i}.timestep;...
-							 obj.vars{i}.d2aL(:,j)-obj.vars{i}.d2aL(:,j-1) == 0.5*(obj.vars{i}.d3aL(:,j)+obj.vars{i}.d3aL(:,j-1))*obj.vars{i}.timestep;...
-							 obj.vars{i}.d3aL(:,j)-obj.vars{i}.d3aL(:,j-1) == 0.5*(obj.vars{i}.d4aL(:,j)+obj.vars{i}.d4aL(:,j-1))*obj.vars{i}.timestep;...		 
-							 ];
+						if collocation_constraint_type == 0
+							% collocation constraint: zero order
+							obj.constr = obj.constr + ...
+								[obj.vars{i}.xL(:,j)-obj.vars{i}.xL(:,j-1) == 0.5*(obj.vars{i}.vL(:,j)+obj.vars{i}.vL(:,j-1))*obj.vars{i}.timestep;...
+								 obj.vars{i}.vL(:,j)-obj.vars{i}.vL(:,j-1) == 0.5*(obj.vars{i}.aL(:,j)+obj.vars{i}.aL(:,j-1))*obj.vars{i}.timestep;...
+								 obj.vars{i}.aL(:,j)-obj.vars{i}.aL(:,j-1) == 0.5*(obj.vars{i}.daL(:,j)+obj.vars{i}.daL(:,j-1))*obj.vars{i}.timestep;...
+								 obj.vars{i}.daL(:,j)-obj.vars{i}.daL(:,j-1) == 0.5*(obj.vars{i}.d2aL(:,j)+obj.vars{i}.d2aL(:,j-1))*obj.vars{i}.timestep;...
+								 obj.vars{i}.d2aL(:,j)-obj.vars{i}.d2aL(:,j-1) == 0.5*(obj.vars{i}.d3aL(:,j)+obj.vars{i}.d3aL(:,j-1))*obj.vars{i}.timestep;...
+								 obj.vars{i}.d3aL(:,j)-obj.vars{i}.d3aL(:,j-1) == 0.5*(obj.vars{i}.d4aL(:,j)+obj.vars{i}.d4aL(:,j-1))*obj.vars{i}.timestep;...
+								 ];
+                        elseif collocation_constraint_type == 1
+							 % collocation constraint: first order
+							 obj.constr = obj.constr + ...
+								[obj.vars{i}.xL(:,j)-obj.vars{i}.xL(:,j-1) == obj.vars{i}.vL(:,j-1)*obj.vars{i}.timestep;...
+								 obj.vars{i}.vL(:,j)-obj.vars{i}.vL(:,j-1) == obj.vars{i}.aL(:,j-1)*obj.vars{i}.timestep;...
+								 obj.vars{i}.aL(:,j)-obj.vars{i}.aL(:,j-1) == obj.vars{i}.daL(:,j-1)*obj.vars{i}.timestep;...
+								 obj.vars{i}.daL(:,j)-obj.vars{i}.daL(:,j-1) == obj.vars{i}.d2aL(:,j-1)*obj.vars{i}.timestep;...
+								 obj.vars{i}.d2aL(:,j)-obj.vars{i}.d2aL(:,j-1) == obj.vars{i}.d3aL(:,j-1)*obj.vars{i}.timestep;...
+								 obj.vars{i}.d3aL(:,j)-obj.vars{i}.d3aL(:,j-1) == obj.vars{i}.d4aL(:,j-1)*obj.vars{i}.timestep;...
+								 ];
+						end
 					end
 				else
 					fprintf('cable is slack: payload free falling or throwing\n');
@@ -236,10 +249,7 @@ classdef PathPlanningFormulation < handle
 					for j = 2:obj.vars{i}.num_nodes + 1
 						obj.constr = obj.constr + [obj.vars{i}.daL(:,j) <= pps.local_setting_list{i}.jerk_max];
 					end
-				end
-				% for j = 2:obj.vars{i}.num_nodes + 1
-				% 	obj.constr = obj.constr + [-[20;20;20] <= obj.vars{i}.daL(:,j) <= [20;20;20]];
-				% end
+                end
 			end
 		end
 		
@@ -284,6 +294,7 @@ classdef PathPlanningFormulation < handle
 		end
 		
 		function addConstraintObstacleAvoidance(obj,pps)
+			obstacle_avoidance_type = 0; % 0 for minimum distance, 1 for minimum penetration
 			if pps.global_setting.has_obstaclelist
 				AA = [-eye(3);eye(3)]; % time-variant
 				for i = 1:pps.num_local_setting
@@ -311,10 +322,20 @@ classdef PathPlanningFormulation < handle
 						for k = 1:size(pps.global_setting.obstaclelist,2)
 							A = pps.global_setting.obstaclelist{k}.A;
 							b = pps.global_setting.obstaclelist{k}.b;
-							obj.constr = obj.constr+...
-							[-bb'*obj.vars{i}.mu{k}(:,j)+(A*obj.vars{i}.xL(:,j)-b)'*obj.vars{i}.lambda{k}(:,j) >= pps.local_setting_list{i}.dmin;...
-							AA'*obj.vars{i}.mu{k}(:,j)+R'*A'*obj.vars{i}.lambda{k}(:,j) == 0;...
-							obj.vars{i}.lambda{k}(:,j)'*A*A'*obj.vars{i}.lambda{k}(:,j) <= 1];
+							if obstacle_avoidance_type == 0
+								obj.constr = obj.constr+...
+								[-bb'*obj.vars{i}.mu{k}(:,j)+(A*obj.vars{i}.xL(:,j)-b)'*obj.vars{i}.lambda{k}(:,j) >= pps.local_setting_list{i}.dmin;...
+								AA'*obj.vars{i}.mu{k}(:,j)+R'*A'*obj.vars{i}.lambda{k}(:,j) == 0;...
+								obj.vars{i}.lambda{k}(:,j)'*A*A'*obj.vars{i}.lambda{k}(:,j) <= 1];
+							elseif obstacle_avoidance_type == 1
+								dist = sdpvar(1);
+								obj.constr = obj.constr+...
+								[-bb'*obj.vars{i}.mu{k}(:,j)+(A*obj.vars{i}.xL(:,j)-b)'*obj.vars{i}.lambda{k}(:,j) >= pps.local_setting_list{i}.dmin-dist;...
+								dist >= 0;...
+								AA'*obj.vars{i}.mu{k}(:,j)+R'*A'*obj.vars{i}.lambda{k}(:,j) == 0;...
+								obj.vars{i}.lambda{k}(:,j)'*A*A'*obj.vars{i}.lambda{k}(:,j) == 1];
+							obj.cost = obj.cost + dist * pps.local_setting_list{i}.K;
+							end
 						end
 					end
 				end
@@ -381,12 +402,24 @@ classdef PathPlanningFormulation < handle
 		end
 
 		function addConstraintClosedSpace(obj,pps)
+			% Add locally closed space constraints
 			for i = 1:pps.num_local_setting
-				if ~isempty(pps.local_setting_list{i}.closed_space)
-					num_closed_space = size(pps.local_setting_list{i}.closed_space, 2);
+				if ~isempty(pps.local_setting_list{i}.closedspacelist)
+					num_closed_space = size(pps.local_setting_list{i}.closedspacelist, 2);
 					for j = 1: num_closed_space
 						for k = 2: obj.vars{i}.num_nodes+1
-							obj.constr = obj.constr + [pps.local_setting_list{i}.closed_space{j}.A * obj.vars{i}.xL(:,k) <= pps.local_setting_list{i}.closed_space{j}.b];
+							obj.constr = obj.constr + [pps.local_setting_list{i}.closedspacelist{j}.A * obj.vars{i}.xL(:,k) <= pps.local_setting_list{i}.closedspacelist{j}.b];
+						end
+					end
+				end
+			end
+			% Add globally closed space constraints
+			if pps.global_setting.has_closedspace
+				num_closed_space = size(pps.global_setting.closedspacelist, 2);
+				for i = 1: num_closed_space
+					for j = 1:pps.num_local_setting
+						for k = 2:obj.vars{j}.num_nodes+1
+							obj.constr = obj.constr + [pps.global_setting.closedspacelist{i}.A * obj.vars{j}.xL(:,k) <= pps.global_setting.closedspacelist{i}.b];
 						end
 					end
 				end
@@ -428,11 +461,12 @@ classdef PathPlanningFormulation < handle
 			obj.options.ipopt.max_iter = 3000;
 		end
 		
-		function solve(obj,pps)
+		function [compute_time] = solve(obj,pps)
 			fprintf('Optimization begins to be solved with IPOPT Solver\n')
-			optimize(obj.constr,obj.cost,obj.options);
+			res = optimize(obj.constr,obj.cost,obj.options);
 			fprintf('Optimization ends\n')
 			obj.mergeTrajectory(pps);
+			compute_time = res.solvertime;
 		end
 		
 		function mergeTrajectory(obj,pps)

@@ -64,7 +64,7 @@ classdef QuadLoadState < DifferentialFlatness
 
 		function visualize_taut(obj)
 			s.L = 0.175; %length of quadrotor boom
-			s.R = 0.1; %radius of propeller prop
+			s.R = 0.08; %radius of propeller prop
 
 			% Extract state x
 			xL = obj.xL;

@@ -13,6 +13,7 @@ classdef LocalSetting < handle
 		Sf;
 		R;
 		Rbar;
+		K;
 		
 		% ========== Physical Limitations ========== %
 		cable_length_min; % minimal revolute length
@@ -30,7 +31,7 @@ classdef LocalSetting < handle
 		sample_distance_max;
 		
 		% ========== Special Specification ========== %
-		closed_space;
+		closedspacelist;
 
 		has_waypoints;
 		waypoints;
@@ -46,14 +47,15 @@ classdef LocalSetting < handle
 		function obj = LocalSetting()
 			% ========== Obstacle Avoidance ========== %
 			obj.dmin = 0.02;
-			obj.epsilonx = 0.16;
-			obj.epsilony = 0.16;
+			obj.epsilonx = 0.25;
+			obj.epsilony = 0.25;
 			obj.epsilonz = 0.10;
 			% ========== Optimization ========== %
 			obj.Q = diag([1;1;1]);
 			obj.Sf = 1;
 			obj.R = 1;
 			obj.Rbar = 1;
+			obj.K = 10^8;
 			% ========== Physical Limitations ========== %
 			obj.cable_length_min = 0.15;
 			obj.jerk_min = 20*[-1;-1;-1]; % default
@@ -61,7 +63,7 @@ classdef LocalSetting < handle
 			% ========== Navigation Specification ========== %
 			obj.num_nodes = 50;
 			% ========== Special Specification ========== %
-			obj.closed_space = {};
+			obj.closedspacelist = {};
 			obj.has_waypoints = false;
 			obj.waypoints = {};
 			obj.status = 1; % default taut case
