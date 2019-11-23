@@ -51,6 +51,7 @@ classdef PathPlanningFormulation < handle
 					ls = pps.local_setting_list{i};
 					if ls.status == 1
 						obj.vars{i}.xL = sdpvar(3,ls.num_nodes+1);
+						assign(obj.vars{i}.xL, [linspace(0,0,ls.num_nodes+1);linspace(-1.5,1.5,ls.num_nodes+1);linspace(1.0,1.0,ls.num_nodes+1)]);
 						obj.vars{i}.vL = sdpvar(3,ls.num_nodes+1);
 						obj.vars{i}.aL = sdpvar(3,ls.num_nodes+1);
 						obj.vars{i}.daL = sdpvar(3,ls.num_nodes+1);
@@ -314,26 +315,19 @@ classdef PathPlanningFormulation < handle
 				AA = [-eye(3);eye(3)]; % time-variant
 				for i = 1:pps.num_local_setting
 					for j = 1:obj.vars{i}.num_nodes+1
-						% Rodrigues' Formula
-						% qq = (1/2)*([0;0;-1]+obj.vars{i}.q(:,j));
-                        % normalization of rotation axis
-                        % qq = qq/sqrt((-obj.vars{i}.q(3,j)+1)/2);
-						% R = eye(3) + sin(pi)*hat(qq) +...
-						% 	(1-cos(pi))*hat(qq)*hat(qq);
-						% R = eye(3) + 2*hat(qq)*hat(qq);
-						
 						% direct calculation
 						q = obj.vars{i}.q(:,j);
 						qq = q + [0;0;-1];
-                        qq_norm = sdpvar(1,1);
-                        obj.constr = obj.constr + [qq_norm^2 == q(1)^2 + q(2)^2 + (q(3)-1)^2];
-                        R = eye(3) + hat_map(qq)*sin(qq_norm*pi)/qq_norm + hat_map(qq)*hat_map(qq)*(1-cos(qq_norm*pi))/(qq_norm^2);
+						qq_norm = sdpvar(1,1);
+						obj.constr = obj.constr + [qq_norm^2 == q(1)^2 + q(2)^2 + (q(3)-1)^2];
+						% Rodrigues' Formula
+						R = eye(3) + hat_map(qq)*sin(qq_norm*pi)/qq_norm + hat_map(qq)*hat_map(qq)*(1-cos(qq_norm*pi))/(qq_norm^2);
 						bb = [pps.local_setting_list{i}.epsilonx;...
-							  pps.local_setting_list{i}.epsilony;...
-							  0;... % assume payload is point-mass
-							  pps.local_setting_list{i}.epsilonx;...
-							  pps.local_setting_list{i}.epsilony;...
-							  pps.local_setting_list{i}.epsilonz + obj.vars{i}.L(j)];
+							pps.local_setting_list{i}.epsilony;...
+							0;... % assume payload is point-mass
+							pps.local_setting_list{i}.epsilonx;...
+							pps.local_setting_list{i}.epsilony;...
+							pps.local_setting_list{i}.epsilonz + obj.vars{i}.L(j)];
 						for k = 1:size(pps.global_setting.obstaclelist,2)
 							A = pps.global_setting.obstaclelist{k}.A;
 							b = pps.global_setting.obstaclelist{k}.b;
@@ -466,6 +460,10 @@ classdef PathPlanningFormulation < handle
 			end
 		end
 		
+		function setupInitialGuess(obj, ig)
+			assign(obj.vars{1}.xL, ig.vars{1}.xL)
+		end
+
 		function setupOptions(obj)
 			obj.options = sdpsettings('solver','ipopt','verbose',1,'usex0',1);
 			% Termination
