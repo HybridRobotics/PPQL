@@ -339,11 +339,11 @@ classdef PathPlanningFormulation < handle
 							elseif obstacle_avoidance_type == 1
 								dist = sdpvar(1);
 								obj.constr = obj.constr+...
-								[-bb'*obj.vars{i}.mu{k}(:,j)+(A*obj.vars{i}.xL(:,j)-b)'*obj.vars{i}.lambda{k}(:,j) >= pps.local_setting_list{i}.dmin-dist;...
+								[-bb'*obj.vars{i}.mu{k}(:,j)+(A*obj.vars{i}.xL(:,j)-b)'*obj.vars{i}.lambda{k}(:,j) >= -dist;...
 								dist >= 0;...
 								AA'*obj.vars{i}.mu{k}(:,j)+R'*A'*obj.vars{i}.lambda{k}(:,j) == 0;...
 								obj.vars{i}.lambda{k}(:,j)'*A*A'*obj.vars{i}.lambda{k}(:,j) == 1];
-							obj.cost = obj.cost + dist * pps.local_setting_list{i}.K;
+								obj.cost = obj.cost + dist * pps.local_setting_list{i}.K;
 							end
 						end
 					end
@@ -454,7 +454,7 @@ classdef PathPlanningFormulation < handle
 						obj.cost_derivative = obj.cost_derivative + (obj.vars{i}.d4aL(:,j)-obj.vars{i}.d4aL(:,j-1))'*...
 							pps.local_setting_list{i}.Q*(obj.vars{i}.d4aL(:,j)-obj.vars{i}.d4aL(:,j-1));
 						obj.cost_tension = obj.cost_tension + pps.local_setting_list{i}.R*obj.vars{i}.F(j);
-						obj.cost_cable = obj.cost_cable + pps.local_setting_list{i}.Rbar*(obj.params.L0-obj.vars{i}.L(j));
+						obj.cost_cable = obj.cost_cable + pps.local_setting_list{i}.Rbar1*(obj.params.L0-obj.vars{i}.L(j))+pps.local_setting_list{i}.Rbar2*(obj.vars{i}.L(j-1)-obj.vars{i}.L(j))^2;
 					end
 				end
 			end
@@ -465,7 +465,7 @@ classdef PathPlanningFormulation < handle
 		end
 
 		function setupOptions(obj)
-			obj.options = sdpsettings('solver','ipopt','verbose',1,'usex0',1);
+			obj.options = sdpsettings('solver','ipopt','verbose',2,'usex0',1,'showprogress',1);
 			% Termination
 			obj.options.ipopt.tol = 1;
 			obj.options.ipopt.dual_inf_tol = 1;
@@ -556,6 +556,7 @@ classdef PathPlanningFormulation < handle
 		function visualizeSettings(obj,pps)
 			% display obstacles
 			obj.visualizeObstacles(pps);
+			obj.visualizeWaypoints(pps);
 		end
 		
 		function visualizeObstacles(obj,pps)
@@ -568,6 +569,17 @@ classdef PathPlanningFormulation < handle
 		function visualizeTrajectory(obj,pps)
 			obj.output.trajectory.visualize();
 			hold on;
+		end
+
+		function visualizeWaypoints(obj,pps)
+			num_local_settings = size(pps.local_setting_list,2);
+			for i = 1:num_local_settings
+				for j = 1:size(pps.local_setting_list{i}.waypoints, 2)
+					point = pps.local_setting_list{i}.waypoints{j}.position;
+					plot3(point(1),point(2),point(3),'d','MarkerSize',12,'MarkerEdgeColor','k','MarkerFaceColor','r');
+					hold on;
+				end
+			end
 		end
 		
 		function traj = getTrajectory(obj)

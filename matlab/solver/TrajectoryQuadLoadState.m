@@ -34,9 +34,11 @@ classdef TrajectoryQuadLoadState < handle
 
 		function [] = visualize(obj)
 			for i = 1:obj.size()
-				state = obj.traj(i);
-				state.visualize();
-				hold on;
+				if 1
+					state = obj.traj(i);
+					state.visualize();
+					hold on;
+				end
 			end
 			load_traj = obj.generateLoadTraj();
 			plot3(load_traj(1,:),load_traj(2,:),load_traj(3,:),'k');

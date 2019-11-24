@@ -4,8 +4,8 @@ close all
 params = SystemParameters();
 
 local_setting1 = LocalSetting();
-local_setting1.defineTraveltimeBounded(2,6);
-local_setting1.sample_distance_max = 0.5;
+local_setting1.defineTraveltimeBounded(4,8);
+local_setting1.sample_distance_max = 0.25;
 
 global_setting = GlobalSetting();
 obstacle1 = Polyhedron('lb',[-5; -0.5; -3], 'ub',[5; 0.5; 1.4]);
@@ -16,8 +16,8 @@ global_setting.addObstacle(obstacle1);
 global_setting.addObstacle(obstacle2);
 global_setting.addObstacle(obstacle3);
 global_setting.addObstacle(obstacle4);
-region = Polyhedron('lb',[-5; -2; -3], 'ub', [5; 2; 7]);
-global_setting.addClosedSpace(region);
+% region = Polyhedron('lb',[-5; -2; -3], 'ub', [5; 2; 7]);
+% global_setting.addClosedSpace(region);
 
 path_planning_setting = PathPlanningSetting();
 path_planning_setting.addLocalSetting(local_setting1);

@@ -56,14 +56,18 @@ classdef InitialGuess < handle
 			for i = 1:1:numNodes
 				q_rand = obj.getRandomPoint();
 				plot3(q_rand(1), q_rand(2), q_rand(3), 'x', 'Color',  [0 0.4470 0.7410])
-
+				finish = false;
 				% Break if goal node is already reached
 				for j = 1:1:length(nodes)
 					if norm(nodes(j).coord - q_goal.coord) < 0.25
-						break
+						finish = true;
+						break;
 					end
 				end
-
+				if finish == true
+					fprintf('reach the target position');
+					break;
+				end
 				% Pick the closest node from existing list to branch out from
 				ndist = [];
 				for j = 1:1:length(nodes)
@@ -149,30 +153,137 @@ classdef InitialGuess < handle
 			xlim(obj.x_bound);
 			ylim(obj.y_bound);
 			zlim(obj.z_bound);
-			obj.visualizeObstacles()
-			dx = 0.2;
-			move_up = [0;0;dx]; move_down = [0;0;-dx];
-			move_toward = [dx;0;0]; move_back = [-dx;0;0];
-			move_left = [0;-dx;0]; move_right = [0;dx;0];
-			actions = [move_up,move_down,move_toward,move_back,move_left,move_right];
-			feasible_traj = [obj.start_state.xL];
-			pos = obj.start_state.xL;
-			while norm(pos - obj.end_state.xL) >= sqrt(3)*0.1
-				cost_list = [];
-				valid_actions = [];
-				for i = 1:6
-					if obj.isObstacleFree(pos + actions(:,i))
-						valid_actions = [valid_actions actions(:,i)]; 
-						cost_list = [cost_list norm(actions(:,i))+norm(obj.end_state.xL-pos-actions(:,i))];
+% 			obj.visualizeObstacles()
+			start = obj.start_state.xL';
+			goal = obj.end_state.xL';
+			dx = 0.1; dy = 0.1; dz = 0.1;
+			temp1 = obj.x_bound(1):dx:obj.x_bound(2);
+			temp2 = obj.y_bound(1):dy:obj.y_bound(2);
+			temp3 = obj.z_bound(1):dz:obj.z_bound(2);
+			MAP = zeros((obj.x_bound(2)-obj.x_bound(1))/dx+1,...
+				(obj.y_bound(2)-obj.y_bound(1))/dy+1,...
+				(obj.z_bound(2)-obj.z_bound(1))/dz+1,3);
+			weight = 1;
+			% assign position into nodes
+			for x = 1:size(MAP,1)
+				for y = 1:size(MAP,2)
+					for z = 1:size(MAP,3)
+						MAP(x,y,z,1) = temp1(x);
+						MAP(x,y,z,2) = temp2(y);
+						MAP(x,y,z,3) = temp3(z);
 					end
 				end
-				[val, idx] = min(cost_list);
-				pos_new = pos + valid_actions(:,idx);
-				line([pos(1), pos_new(1)], [pos(2), pos_new(2)], [pos(3), pos_new(3)], 'Color', 'r', 'LineWidth', 4);
-				hold on
-				pos = pos_new;
-				feasible_traj = [feasible_traj pos];
 			end
+			% heuristic Map of all nodes
+			for x = 1:size(MAP,1)
+				for y = 1:size(MAP,2)
+					for z = 1:size(MAP,3)
+						point = [MAP(x,y,z,1);MAP(x,y,z,2);MAP(x,y,z,3)];
+						if(obj.isObstacleFree(point))
+							H(x,y,z) = weight*norm(goal-point);
+							G(x,y,z) = inf;
+						else
+							feasible(x,y,z) = inf;
+						end
+					end
+				end
+			end
+			% initial condition
+			start_index_x = (start(1)-obj.x_bound(1))/dx + 1;
+			start_index_y = (start(2)-obj.y_bound(1))/dy + 1;
+			start_index_z = (start(3)-obj.z_bound(1))/dz + 1;
+			G(start_index_x,start_index_y,start_index_z) = 0;
+			F(start_index_x,start_index_y,start_index_z) = H(start_index_x,start_index_y,start_index_z);
+			closedNodes = [];
+			openNodes = [start_index_x start_index_y start_index_z G(start_index_x,start_index_y,start_index_z) F(start_index_x,start_index_y,start_index_z) 0];
+			solved = false;
+			while (~isempty(openNodes))
+				% find node from open set with smallest F value
+				[A, I] = min(openNodes(:,5));
+				% set current node
+				current = openNodes(I, :);
+ 				% plot3(current(1),current(2),current(3),'o','color','g','MarkerFaceColor','g')
+				% if goal is reached, break the loop
+				if([MAP(current(1),current(2),current(3),1),MAP(current(1),current(2),current(3),2),MAP(current(1),current(2),current(3),3)]==goal)
+					closedNodes = [closedNodes;current];
+					solved = true;
+					break;
+				end
+				%remove current node from open set and add it to closed set
+				openNodes(I,:) = [];
+				closedNodes = [closedNodes;current];
+				%for all neighbors of current node
+				for x = current(1)-1:current(1)+1
+					for y = current(2)-1:current(2)+1
+						for z = current(3)-1:current(3)+1
+							% if out of range skip
+							if (x<1||x>size(MAP,1)||y<1||y>size(MAP,2)||z<1||z>size(MAP,3))
+								continue
+							end
+							% if object skip
+							if (isinf(feasible(x,y,z)))
+								continue
+							end
+							% if current node skip
+							if (x==current(1) && y==current(2) && z==current(3))
+								continue
+							end
+							% if already in closed set skip
+							skip = 0;
+							for j = 1:size(closedNodes,1)
+								if(x == closedNodes(j,1) && y==closedNodes(j,2) && z==closedNodes(j,3))
+									skip = 1;
+									break;
+								end
+							end
+							if(skip == 1)
+								continue
+							end
+							A = [];
+							% Check if already in open set
+							if(~isempty(openNodes))
+								for j = 1:size(openNodes,1)
+									if(x == openNodes(j,1) && y==openNodes(j,2) && z==openNodes(j,3))
+										A = j;
+										break;
+									end
+								end
+							end
+							newG = G(current(1),current(2),current(3)) + round(norm([(current(1)-x)*dx,(current(2)-y)*dy,(current(3)-z)*dz]));
+							% if not in open set, add to open set
+							if(isempty(A))
+								G(x,y,z) = newG;
+								newF = G(x,y,z) + H(x,y,z);
+								newNode = [x y z G(x,y,z) newF size(closedNodes,1)];
+								openNodes = [openNodes; newNode];
+								plot3(x,y,z,'x','color','b')
+								continue
+							end
+							%if no better path, skip
+							if (newG >= G(x,y,z))
+								continue
+							end
+							G(x,y,z) = newG;
+							newF = newG + H(x,y,z);
+							openNodes(A,4:6) = [newG newF size(closedNodes,1)];
+						end
+					end
+				end
+			end
+			if (solved)
+				% Path plotting
+				j = size(closedNodes,1);
+				path = [];
+				while(j > 0)
+					point = [MAP(closedNodes(j,1),closedNodes(j,2),closedNodes(j,3),1),MAP(closedNodes(j,1),closedNodes(j,2),closedNodes(j,3),2),MAP(closedNodes(j,1),closedNodes(j,2),closedNodes(j,3),3)];
+					j = closedNodes(j,6);
+					path = [point;path];
+				end
+				plot3(path(:,1),path(:,2),path(:,3),'-','color','r')
+			else
+				disp('No Path Found')
+			end
+			feasible_traj = path';
 			toc
 		end
 		
@@ -182,7 +293,6 @@ classdef InitialGuess < handle
 				for k = 1:size(pps_copy.global_setting.obstaclelist,2)
 					% buffer region
 					obstacle = pps_copy.global_setting.obstaclelist{k};
-					obstacle.b
 					b_new = [obstacle.b(1:2)+0.25;obstacle.b(3)+1;obstacle.b(4:5)+0.25;obstacle.b(6)];
 					A_new = obstacle.A;
 					if A_new * point <= b_new

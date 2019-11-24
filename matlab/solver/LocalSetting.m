@@ -12,7 +12,8 @@ classdef LocalSetting < handle
 		Q;
 		Sf;
 		R;
-		Rbar;
+		Rbar1;
+		Rbar2;
 		K;
 		
 		% ========== Physical Limitations ========== %
@@ -54,8 +55,9 @@ classdef LocalSetting < handle
 			obj.Q = diag([1;1;1]);
 			obj.Sf = 1;
 			obj.R = 1;
-			obj.Rbar = 1;
-			obj.K = 10^8;
+			obj.Rbar1 = 1;
+			obj.Rbar2 = 10^8;
+			obj.K = 10^10;
 			% ========== Physical Limitations ========== %
 			obj.cable_length_min = 0.15;
 			obj.jerk_min = 20*[-1;-1;-1]; % default

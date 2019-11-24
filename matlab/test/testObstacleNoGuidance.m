@@ -16,7 +16,10 @@ path_planning_setting.addGlobalSetting(global_setting);
 
 start_state = QuadLoadState([0;-1.5;1.0],[0;0;0],[0;0;-1],[0;0;0],eye(3),[0;0;0]);
 end_state = QuadLoadState([0;1.5;1.0],[0;0;0],[0;0;-1],[0;0;0],eye(3),[0;0;0]);
+initial_value_solver = InitialGuess(params, path_planning_setting, start_state, end_state);
+ig = initial_value_solver.solveInitialGuess();
 problem = PathPlanningFormulation(params,path_planning_setting,start_state,end_state);
+problem.setupInitialGuess(ig);
 compute_time = problem.solve(path_planning_setting);
 fprintf('Computation Time in IPOPT: %f\n', compute_time);
 problem.visualize(path_planning_setting);
